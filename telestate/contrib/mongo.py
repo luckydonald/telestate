@@ -9,6 +9,7 @@ from .. import TeleMachine
 
 
 __author__ = 'luckydonald'
+__all__ = ['TeleMachineMongo']
 logger = logging.getLogger(__name__)
 
 

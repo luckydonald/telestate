@@ -6,6 +6,7 @@ from .. import TeleMachine
 
 
 __author__ = 'luckydonald'
+__all__ = ['TeleMachineSimpleDict']
 logger = logging.getLogger(__name__)
 
 
