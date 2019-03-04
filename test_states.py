@@ -3,7 +3,7 @@ import unittest, time
 from teleflask import Teleflask
 from pytgbot.api_types.receivable.peer import Chat
 from pytgbot.api_types.receivable.updates import Update, Message
-from .states import TeleState, TeleMachine
+from .telestate import TeleState, TeleMachine
 
 
 from luckydonaldUtils.logger import logging
@@ -361,3 +361,4 @@ class MyTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+# end if
