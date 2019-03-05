@@ -75,17 +75,21 @@ from html import escape
 
 from flask import Flask
 from teleflask import Teleflask
-from teleflask.messages import HTMLMessage
-
 
 from telestate import TeleState
 from telestate.contrib.simple import TeleMachineSimpleDict
+
+# because we wanna send HTML formatted messages below, we need:
+from teleflask.messages import HTMLMessage
+# also we want to send cool inline buttons below, so we need to import:
+from pytgbot.api_types.sendable.reply_markup import InlineKeyboardMarkup, InlineKeyboardButton
+
 
 BOT_API_KEY = '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11'
 
 app = Flask(__name__)
 bot = Teleflask(BOT_API_KEY)
-states = TeleMachineSimpleDict(__name__, app=app)
+states = TeleMachineSimpleDict(__name__, teleflask_or_tblueprint=bot)
 
 states.ASKED_NAME = TeleState()
 states.ASKED_AGE = TeleState()
@@ -127,7 +131,7 @@ def another_function(update, msg):
         age = int(age)
     except ValueError:
         # don't change the state
-        return "Invalid age, must be an integer. Please tell me your age
+        return "Invalid age, must be an integer. Please tell me your age."
     # end try
     states.CONFIRM_DATA.activate({"name": name, "age": age})
     return HTMLMessage(
