@@ -3,7 +3,7 @@ import unittest, time
 from teleflask import Teleflask
 from pytgbot.api_types.receivable.peer import Chat
 from pytgbot.api_types.receivable.updates import Update, Message
-from .telestate import TeleState, TeleMachine
+from telestate import TeleState, TeleMachine
 
 
 from luckydonaldUtils.logger import logging
@@ -22,6 +22,16 @@ class SilentTeleMachine(TeleMachine):
         pass
     # end def
 # end class
+from pytgbot.bot import Bot
+
+
+class BotMock(Bot):
+    def get_me(self):
+        assert self.return_python_objects
+        from pytgbot.api_types.receivable.peer import User
+        return User(id=0, is_bot=True, first_name="UNITTEST", last_name=None, username="test4458bot")
+    # end def
+# end def
 
 
 class MyTestCase(unittest.TestCase):
@@ -35,6 +45,7 @@ class MyTestCase(unittest.TestCase):
         )
         self.m = SilentTeleMachine(__name__, self.b)
         self.s = TeleState('LITTLEPIP')
+        self.b._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
         self.b.init_bot()
     # end def
 
@@ -130,7 +141,7 @@ class MyTestCase(unittest.TestCase):
         self.assertTrue (called[1], 'BEST_PONY should have been called')
     # end def
 
-    def test_commands(self):
+    def  test_commands(self):
         self.m.BEST_PONY = self.s
         self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
         self.assertEqual(self.m.CURRENT.name, 'DEFAULT')
