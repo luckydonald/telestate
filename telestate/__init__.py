@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import re
-from typing import Union, Any
+from typing import Union, Any, Dict, cast
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
 from teleflask.server.base import TeleflaskBase
 from teleflask.server.extras import Teleflask
-from teleflask.server.mixins import StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBase
+from teleflask.server.mixins import StartupMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBase, \
+    RegisterBlueprintsMixin
 from teleflask.server.blueprints import TBlueprint
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
@@ -15,13 +16,52 @@ __author__ = 'luckydonald'
 __all__ = ['TeleState', 'TeleMachine']
 logger = logging.getLogger(__name__)
 
+logging.add_colored_handler(level=logging.DEBUG)
 
-class TeleState(BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBase):
+
+class TeleStateUpdateHandler(RegisterBlueprintsMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBase):
+    def __init__(self, wrapped_state, *args, **kwargs):
+        self.wrapped_state: TeleState = wrapped_state
+        super().__init__(*args, **kwargs)
+    # end def
+
+    def process_update(self, update):
+        """
+        This method is called from the flask webserver.
+
+        Any Mixin implementing must call super().process_update(update).
+        So catch exceptions in your mixin's code.
+
+        :param update: The Telegram update
+        :type  update: pytgbot.api_types.receivable.updates.Update
+        :return:
+        """
+        logger.debug('State {!r} got an update.'.format(self))
+        super().process_update(update)
+    # end def
+
+    @property
+    def username(self):
+        return self.wrapped_state.machine.username
+    # end def
+
+    @property
+    def user_id(self):
+        return self.wrapped_state.machine.user_id
+    # end def
+
+    def process_result(self, result):
+        return self.wrapped_state.process_result(result)
+    # end def
+# end class
+
+
+class TeleState(TBlueprint):
     """
     Basically the TeleState works like a TBlueprint, but is only active when that TeleState is active.
     """
     # :type machine: TeleMachine
-    warn_on_modifications = False
+    warn_on_modifications = True
 
     def __init__(self, name=None, machine: 'TeleMachine' = None):
         """
@@ -34,16 +74,26 @@ class TeleState(BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBas
         if name:
             TeleMachine.assert_can_be_name(name, allow_setting_defaults=True)
         # end if
-        self.name = name
         assert_type_or_raise(machine, TeleMachine, None, parameter_name='machine')
         assert machine is None or isinstance(machine, TeleMachine)
         self.machine: TeleMachine = None
         self.data: Any = None
+        self.update_handler: Union[None, TeleStateUpdateHandler] = None
+        super(TeleState, self).__init__(name)  # writes self.name
 
         if machine:
             self.register_machine(machine)
         # end def
-        super(TeleState, self).__init__()
+    # end def
+
+    def register_handler(self):
+        if self._got_registered_once:
+            logger.warning('already registered')
+            return
+        # end if
+        logger.warning(f'Registering update_handler for {self.name!r}')
+        self.update_handler = TeleStateUpdateHandler(self)
+        self.update_handler.register_tblueprint(self)
     # end def
 
     def activate(self, data=None):
@@ -64,27 +114,25 @@ class TeleState(BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBas
         :param name: Optionally you can overwrite the name.
         :type  name: str
         """
-        logger.debug('registering machine {!r} with name {!r}.'.format(machine, name))
+        logger.debug('registering with machine {!r} at name {!r}.'.format(machine, name))
         self.machine = machine
         if name:
             self.name = name
         # end if
+
+    def record(self, func):
+        if self.update_handler is None:
+            return super().record(func)
+        # end def
+
+        # in case we already have update_handler
+        logger.warning(f'late addition to {self.name}: {func}')
+        state = self.make_setup_state(self.update_handler, {}, first_registration=False)
+        func(state)
+        # end for
     # end def
 
-    def process_update(self, update):
-        """
-        This method is called from the flask webserver.
 
-        Any Mixin implementing must call super().process_update(update).
-        So catch exceptions in your mixin's code.
-
-        :param update: The Telegram update
-        :type  update: pytgbot.api_types.receivable.updates.Update
-        :return:
-        """
-        logger.debug('State {!r} got an update.'.format(self))
-        super().process_update(update)
-    # end def
 
     def process_result(self, update, result):
         """
@@ -176,7 +224,8 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         # end def
         self.blueprint.on_startup(self.do_startup)
         self.blueprint.on_update(self.process_update)
-        self.states = {}
+        self.states: Dict[str, TeleState] = {}  # NAME: telestate_instance
+        self.register_bot()
         self.active_state = None
 
         self.DEFAULT = TeleState('DEFAULT', self)
@@ -237,7 +286,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         return bool(re.match(TeleMachine._STATE_NAMES_REGEX, name))
     # end def
 
-    def register_bot(self, teleflask_or_tblueprint):
+    def register_bot(self):
         """
         Registers an bot to use with the internal blueprint.
 
@@ -245,7 +294,10 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         :type  teleflask_or_tblueprint: Teleflask | TBlueprint
         :return:
         """
-        teleflask_or_tblueprint.register_tblueprint(self.blueprint)
+        # teleflask_or_tblueprint.register_tblueprint()
+        for state in self.states.values():
+            cast(TeleState, state).register_handler()
+        # end def
     # end def
 
     def register_state(self, name, state=None):
@@ -261,6 +313,8 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     def _register_state(self, name, state=None, allow_setting_defaults=False):
         """
+        Registers a state to this TeleMachine.
+
         :param name: The name of the state we want.
         :type  name: str
 
@@ -302,6 +356,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
                 state.register_machine(self, name)
                 # end if
             # end if
+            state.register_handler()
             self.states[name] = state
         # end if
     # end def
@@ -373,12 +428,12 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     def process_update(self, update):
         self.load_state_for_update(update)
-        current = self.CURRENT  # to suppress race-conditions of the logging exception and possible setting of states.
+        current: TeleState = self.CURRENT  # to suppress race-conditions of the logging exception and possible setting of states.
         logger.debug('Got update for state {}.'.format(current.name))
         # TODO: load state here
         # noinspection PyBroadException
         try:
-            current.process_update(update)
+            current.update_handler.process_update(update)
             self.save_state_for_update(update)
         except:
             logger.exception('Sate update processing for state {} failed.'.format(current.name))
