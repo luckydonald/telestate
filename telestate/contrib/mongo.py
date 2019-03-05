@@ -5,8 +5,7 @@ from luckydonaldUtils.logger import logging
 from pymongo.collection import Collection
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
-from .. import TeleMachine
-
+from ..machine import TeleMachine
 
 __author__ = 'luckydonald'
 __all__ = ['TeleMachineMongo']

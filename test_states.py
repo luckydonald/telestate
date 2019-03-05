@@ -4,7 +4,7 @@ from pytgbot.api_types.receivable.media import MessageEntity
 from teleflask import Teleflask, TBlueprint
 from pytgbot.api_types.receivable.peer import Chat, User
 from pytgbot.api_types.receivable.updates import Update, Message
-from telestate import TeleState, TeleMachine
+from telestate import TeleState, TeleMachine, state
 
 try:
     from test_data import update1
@@ -16,6 +16,7 @@ except ImportError:  # IDE workaround
 from luckydonaldUtils.logger import logging
 
 logger = logging.getLogger(__name__)
+logging.add_colored_handler(level=logging.DEBUG)
 
 
 class SilentTeleMachine(TeleMachine):
@@ -65,22 +66,22 @@ class MyTestCase(unittest.TestCase):
     # end def
 
     def test_invalid_name_lowercase(self):
-        self.assertFalse(TeleMachine.can_be_name('penis'))
+        self.assertFalse(state.can_be_name('penis'))
 
     # end def
 
     def test_invalid_name_none(self):
-        self.assertFalse(TeleMachine.can_be_name(''))
+        self.assertFalse(state.can_be_name(''))
 
     # end def
 
     def test_invalid_name_special_char_dash(self):
-        self.assertFalse(TeleMachine.can_be_name('FOO-BAR'))
+        self.assertFalse(state.can_be_name('FOO-BAR'))
 
     # end def
 
     def test_invalid_name_special_char_dot(self):
-        self.assertFalse(TeleMachine.can_be_name('FOO.BAR'))
+        self.assertFalse(state.can_be_name('FOO.BAR'))
 
     # end def
 
