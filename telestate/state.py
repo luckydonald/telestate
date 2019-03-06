@@ -4,7 +4,7 @@ from typing import Any, Union
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
-from teleflask import TBlueprint
+from teleflask import TBlueprint, Teleflask
 from teleflask.server.base import TeleflaskMixinBase
 from teleflask.server.mixins import RegisterBlueprintsMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin
 
@@ -74,8 +74,9 @@ def can_be_name(name: str, allow_defaults: bool = False) -> bool:
 
 
 class TeleStateUpdateHandler(RegisterBlueprintsMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBase):
-    def __init__(self, wrapped_state, *args, **kwargs):
+    def __init__(self, wrapped_state, teleflask, *args, **kwargs):
         self.wrapped_state: TeleState = wrapped_state
+        self.teleflask: Teleflask = teleflask
         super().__init__(*args, **kwargs)
     # end def
 
@@ -141,13 +142,13 @@ class TeleState(TBlueprint):
         # end def
     # end def
 
-    def register_handler(self):
+    def register_teleflask(self, teleflask):
         if self._got_registered_once:
             logger.warning('already registered')
             return
         # end if
-        logger.warning(f'Registering update_handler for {self.name!r}')
-        self.update_handler = TeleStateUpdateHandler(self)
+        logger.warning(f'Registering update_handler for {self.name!r}: {teleflask!r}')
+        self.update_handler = TeleStateUpdateHandler(self, teleflask)
         self.update_handler.register_tblueprint(self)
     # end def
 

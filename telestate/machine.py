@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import re
-from typing import Dict, cast, Union, Any
+from typing import Dict, cast, Union, Any, Callable
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from teleflask import TBlueprint, Teleflask
 from teleflask.server.base import TeleflaskMixinBase, TeleflaskBase
+from teleflask.server.blueprints import TBlueprintSetupState
 from teleflask.server.mixins import StartupMixin
 
 from .state import TeleState, assert_can_be_name, can_be_name
@@ -41,17 +42,25 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
     """
     def __init__(self, name, teleflask_or_tblueprint=None):
         self.did_init = False
+        self.states: Dict[str, TeleState] = {}  # NAME: telestate_instance
         super(TeleMachine, self).__init__()
         if teleflask_or_tblueprint:
             self.blueprint = teleflask_or_tblueprint
+            if isinstance(teleflask_or_tblueprint, Teleflask):
+                self.is_registered = True
+                self.register_bot(teleflask_or_tblueprint)
+            # end if
         else:
             self.blueprint = TBlueprint(name)
             self.is_registered = False
         # end def
-        self.blueprint.on_startup(self.do_startup)
-        self.blueprint.on_update(self.process_update)
-        self.states: Dict[str, TeleState] = {}  # NAME: telestate_instance
-        self.register_bot()
+        if isinstance(teleflask_or_tblueprint, TBlueprint):
+            from teleflask.server.blueprints import TBlueprintSetupState
+            teleflask_or_tblueprint.record(self.register_bot)
+            self.is_registered = teleflask_or_tblueprint._got_registered_once and teleflask_or_tblueprint._teleflask
+            self.blueprint.on_startup(self.do_startup)
+            self.blueprint.on_update(self.process_update)
+        # end if
         self.active_state = None
 
         self.DEFAULT = TeleState('DEFAULT', self)
@@ -59,17 +68,23 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         self.did_init = True
     # end def
 
-    def register_bot(self):
+    def register_bot(self, teleflask_or_tblueprint: Union[TBlueprintSetupState, TBlueprint, Teleflask]):
         """
         Registers an bot to use with the internal blueprint.
 
-        :param teleflask_or_tblueprint:
+        :param tblueprint:
         :type  teleflask_or_tblueprint: Teleflask | TBlueprint
         :return:
         """
         # teleflask_or_tblueprint.register_tblueprint()
+        if isinstance(teleflask_or_tblueprint, TBlueprintSetupState):
+            teleflask_or_tblueprint = teleflask_or_tblueprint.teleflask
+        # end def
+        if isinstance(teleflask_or_tblueprint, TBlueprint):
+            teleflask_or_tblueprint = teleflask_or_tblueprint.teleflask
+        # end def
         for state in self.states.values():
-            cast(TeleState, state).register_handler()
+            cast(TeleState, state).register_teleflask(teleflask_or_tblueprint)
         # end def
     # end def
 
@@ -129,8 +144,10 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
                 state.register_machine(self, name)
                 # end if
             # end if
-            state.register_handler()
             self.states[name] = state
+            if self.is_registered:
+                state.register_teleflask(self.teleflask)
+            # end if
         # end if
     # end def
 
@@ -215,10 +232,13 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     @property
     def teleflask(self):
-        if isinstance(self.blueprint, Teleflask):
-            return self.blueprint
+        teleflask = self.blueprint
+        while isinstance(teleflask, TBlueprint):
+            teleflask = teleflask.teleflask
         # end if
-        return self.blueprint.teleflask
+        assert isinstance(teleflask, Teleflask)
+        return teleflask
+
     # end def
 
     @property

@@ -26,7 +26,7 @@ update1 = Update(
             first_name="user",
             last_name="test"
         ),
-        text="Woop."
+        text="/cancel"
     )
 )
 

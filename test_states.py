@@ -436,6 +436,7 @@ class AnotherTestCase(unittest.TestCase):
     # end def
 
     def test_blueprintability(self):
+        # test should just not raise any errors.
         states_tbp = TBlueprint(__name__)
         states = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp)
 
@@ -444,9 +445,77 @@ class AnotherTestCase(unittest.TestCase):
             pass
         # end def
 
+    def test_blueprintability_and_register(self):
+        states_tbp = TBlueprint(__name__)
+        states: TeleMachine = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp)
 
+        @states.DEFAULT.command('cancel')
+        def func_1(update):
+            pass
+        # end def
 
+        bot = Teleflask(
+            'FAKE_API_KEY', app=None,
+            hostname="localhost",
+            debug_routes=False,
+            disable_setting_webhook_telegram=True,
+            disable_setting_webhook_route=True
+        )
+        bot._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
+        bot.init_bot()
+        bot.register_tblueprint(states_tbp)
+        self.assertGreater(len(states.CURRENT.update_handler.commands), 0, 'should have added an command.')
+    # end def
 
+    def test_blueprintability_and_execute(self):
+        states_tbp = TBlueprint(__name__)
+        states = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp)
+        called = [False]
+
+        @states.DEFAULT.command('cancel')
+        def func_1(update, text):
+            called[0] = True
+        # end def
+
+        bot = Teleflask(
+            'FAKE_API_KEY', app=None,
+            hostname="localhost",
+            debug_routes=False,
+            disable_setting_webhook_telegram=True,
+            disable_setting_webhook_route=True
+        )
+        bot._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
+        bot.init_bot()
+        bot.register_tblueprint(states_tbp)
+        bot.process_update(update1)
+        self.assertTrue(called[0], 'func_1 should have been called')
+    # end def
+
+    def test_doubleblueprintability_and_execute(self):
+        states_tbp = TBlueprint(__name__)
+        states_tbp2 = TBlueprint(__name__ + "2")
+        states_tbp.register_tblueprint(states_tbp2)
+        states = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp2)
+        called = [False]
+
+        @states.DEFAULT.command('cancel')
+        def func_1(update, text):
+            called[0] = True
+        # end def
+
+        bot = Teleflask(
+            'FAKE_API_KEY', app=None,
+            hostname="localhost",
+            debug_routes=False,
+            disable_setting_webhook_telegram=True,
+            disable_setting_webhook_route=True
+        )
+        bot._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
+        bot.init_bot()
+        bot.register_tblueprint(states_tbp)
+        bot.process_update(update1)
+        self.assertTrue(called[0], 'func_1 should have been called')
+    # end def
 # end class
 
 
