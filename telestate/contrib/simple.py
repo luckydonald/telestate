@@ -38,7 +38,7 @@ class TeleMachineSimpleDict(TeleMachine):
         state_name, cache_data = cache_data.get(user_id, (None, None))
         # cache_data now is the state's data or None,
         # state_name is the state's name or None.
-        logger.debug('cached state for {chat_id}|{user_id}: {state_name!r}\ndata: {cache_data!r}')
+        logger.debug(f'cached state for {chat_id}|{user_id}: {state_name!r}\ndata: {cache_data!r}')
         if state_name:
             self.set(state_name, data=cache_data)
         else:

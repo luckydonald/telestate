@@ -143,11 +143,11 @@ class TeleState(TBlueprint):
     # end def
 
     def register_teleflask(self, teleflask):
+        logger.debug(f'Registering update_handler for {self.name!r}: {teleflask!r}')
         if self._got_registered_once:
             logger.warning('already registered')
             return
         # end if
-        logger.warning(f'Registering update_handler for {self.name!r}: {teleflask!r}')
         self.update_handler = TeleStateUpdateHandler(self, teleflask)
         self.update_handler.register_tblueprint(self)
     # end def
