@@ -334,7 +334,11 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
             if update.callback_query.message.chat and update.callback_query.message.chat.id:
                 chat_id = update.callback_query.message.chat.id
             # end if
-            if update.callback_query.message.from_peer and update.callback_query.message.from_peer.id:
+            if update.callback_query.from_peer and update.callback_query.from_peer.id:
+                # User who clicked the button
+                user_id = update.callback_query.from_peer.id
+            elif update.callback_query.message.from_peer and update.callback_query.message.from_peer.id:
+                # User who send the message with the keyboard (should be the bot)
                 user_id = update.callback_query.message.from_peer.id
             # end if
             return chat_id, user_id
