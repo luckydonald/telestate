@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import re
 from typing import Dict, cast, Union, Any, Callable
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
@@ -20,6 +19,7 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
     logging.add_colored_handler(level=logging.DEBUG)
 # end if
+
 
 class TeleMachine(StartupMixin, TeleflaskMixinBase):
     """
