@@ -19,6 +19,22 @@ class TeleMachinePony(TeleMachine):
      A TeleMachine implementation preserving it's values in a sql instance via PonyORM.
     """
 
+    class State(object):
+        """
+        Just a fake class proving typing annotations to the StateTable class
+        """
+        user_id: int
+        chat_id: int
+        state: str
+        data: dict
+
+        def __init__(self):
+            raise NotImplementedError(
+                "This is only for providing typing annotiations to the IDEs, and shoudn't be used anywhere!")
+        # end def
+    # end class
+    StateTable: State
+
     def __init__(self, name, db: orm.Database, teleflask_or_tblueprint=None, state_table=None, state_upsert_lock=None):
         """
         A TeleMachine implementation preserving it's values in a sql instance via PonyORM.
@@ -31,9 +47,10 @@ class TeleMachinePony(TeleMachine):
         super().__init__(name, teleflask_or_tblueprint=teleflask_or_tblueprint)
 
         if state_table is not None:
+            assert isinstance(state_table, self.State), "Needs to be subclass of TeleMachinePony.State"
             self.StateTable = state_table
         else:
-            class State(db.Entity):
+            class State(db.Entity, self.State):
                 user_id = orm.Required(int)
                 chat_id = orm.Required(int)
                 state = orm.Required(str)
