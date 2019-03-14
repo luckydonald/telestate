@@ -14,7 +14,7 @@ if __name__ == '__main__':
 # end if
 
 
-class TeleMachinePony(TeleMachine):
+class TeleMachinePonyORM(TeleMachine):
     """
      A TeleMachine implementation preserving it's values in a sql instance via PonyORM.
     """
@@ -47,7 +47,7 @@ class TeleMachinePony(TeleMachine):
         super().__init__(name, teleflask_or_tblueprint=teleflask_or_tblueprint)
 
         if state_table is not None:
-            assert isinstance(state_table, self.State), "Needs to be subclass of TeleMachinePony.State"
+            assert isinstance(state_table, self.State), "Needs to be subclass of TeleMachinePonyORM.State"
             self.StateTable = state_table
         else:
             class State(db.Entity, self.State):
