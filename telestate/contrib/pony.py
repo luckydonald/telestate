@@ -30,7 +30,7 @@ class TeleMachinePonyORM(TeleMachine):
 
         def __init__(self):
             raise NotImplementedError(
-                "This is only for providing typing annotiations to the IDEs, and shoudn't be used anywhere!")
+                "This is only for providing typing annotiations to the IDEs, and shouldn't be used anywhere!")
         # end def
     # end class
     StateTable: State
