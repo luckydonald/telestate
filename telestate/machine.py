@@ -100,7 +100,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         return self._register_state(name, state=state, allow_setting_defaults=not self.did_init)  # prevent setting internal states
     # end def
 
-    def _register_state(self, name, state=None, allow_setting_defaults=False):
+    def _register_state(self, name, state=None, allow_setting_defaults=False, overwrite=False):
         """
         Registers a state to this TeleMachine.
 
@@ -115,6 +115,9 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         :param allow_setting_defaults: if CURRENT and DEFAULT as state name should be allowed. Default: `False`, not allowed.
         :type  allow_setting_defaults: bool
 
+        :param overwrite: if it should overwrite the current set state if already existing.
+        :type  overwrite: bool
+
         :return: If it is valid.
         :rtype:  bool
         :return:
@@ -126,15 +129,24 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
             state.register_machine(self)
             object.__setattr__(self, 'CURRENT', state)
         elif name == 'ALL':
-            raise ValueError('Cant use ALL.')
+            logger.debug('setting up ALL.')
+            if self.did_init or name in self.states:
+                raise ValueError('Cant set ALL manually.')
+            # end if
+            state.register_machine(self)
         elif name in self.states:
             logger.debug('adding new, but is existing.')
-            raise ValueError('State {name!r} already existing.'.format(name=name))
-            # TODO:
+            if not overwrite:
+                raise ValueError('State {name!r} already existing.'.format(name=name))
+            # end if
             if state:
                 logger.debug('Replacing state {!r} with {!r}.'.format(self.states[name], state))
                 state.name = name
+                state.register_machine(self, name)
                 self.states[name] = state
+            else:
+                logger.debug('Name given only. Replacing state {!r} with new state.'.format(self.states[name]))
+                self.states[name] = TeleState(name, self)
             # end def
             return self.states[name]
         else:
