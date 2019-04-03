@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from typing import Type
+
 from luckydonaldUtils.logger import logging
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from pony import orm
@@ -33,7 +35,7 @@ class TeleMachinePonyORM(TeleMachine):
                 "This is only for providing typing annotiations to the IDEs, and shouldn't be used anywhere!")
         # end def
     # end class
-    StateTable: State
+    StateTable: Type[State]
 
     def __init__(self, name, db: orm.Database, teleflask_or_tblueprint=None, state_table=None, state_upsert_lock=None):
         """
@@ -47,7 +49,7 @@ class TeleMachinePonyORM(TeleMachine):
         super().__init__(name, teleflask_or_tblueprint=teleflask_or_tblueprint)
 
         if state_table is not None:
-            assert isinstance(state_table, self.State), "Needs to be subclass of TeleMachinePonyORM.State"
+            assert issubclass(state_table, self.State), "Needs to be subclass of TeleMachinePonyORM.State"
             self.StateTable = state_table
         else:
             class State(db.Entity, self.State):
@@ -91,31 +93,28 @@ class TeleMachinePonyORM(TeleMachine):
         excs = []
         ul = self.UpsertLockTable.select().for_update().first()  # enforce only one is in a session.
         for i in range(5):  # limit to 5 tries
-            try:  # creating a new state
+            entry = self.StateTable.get(
+                chat_id=chat_id,
+                user_id=user_id
+            )
+            if entry:
+                logger.debug(f"Found existing entry for chat {chat_id} and user {user_id}. Last state: {entry.state!r}")
+                entry.set(
+                    chat_id=chat_id,
+                    user_id=user_id,
+                    state=state_name,
+                    data=state_data,
+                )
+            else:
+                logger.debug(f"Creating new entry for chat {chat_id} and user {user_id}.")
                 self.StateTable(
                     chat_id=chat_id,
                     user_id=user_id,
                     state=state_name,
                     data=state_data,
                 )
-                break
-            except Exception as e:
-                excs.append(e)
-            # end def
-            try:  # updating existing state
-                self.StateTable.get(
-                    chat_id=chat_id,
-                    user_id=user_id
-                ).set(
-                    chat_id=chat_id,
-                    user_id=user_id,
-                    state=state_name,
-                    data=state_data,
-                )
-                break
-            except Exception as e:
-                excs.append(e)
-            # end try
+            # end if
+            break
         else:
             # we never got successful, never hit a break.
             assert excs, "An error should have occured, as we didn't break."
