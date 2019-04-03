@@ -63,7 +63,7 @@ def can_be_name(name: str, allow_defaults: bool = False) -> bool:
     if not name:
         return False
     # end if
-    if not allow_defaults and name in ('CURRENT', 'DEFAULT'):
+    if not allow_defaults and name in ('CURRENT', 'DEFAULT', 'ALL'):
         return False
     # end if
     if not name.isupper():

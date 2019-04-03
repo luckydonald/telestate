@@ -64,6 +64,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         self.active_state = None
 
         self.DEFAULT = TeleState('DEFAULT', self)
+        self.ALL = TeleState('ALL', self)  # so you can register to states.ALL to be called on all the states.
         self.CURRENT = self.DEFAULT
         self.did_init = True
     # end def
@@ -124,6 +125,8 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
             logger.debug('changing current.')
             state.register_machine(self)
             object.__setattr__(self, 'CURRENT', state)
+        elif name == 'ALL':
+            raise ValueError('Cant use ALL.')
         elif name in self.states:
             logger.debug('adding new, but is existing.')
             raise ValueError('State {name!r} already existing.'.format(name=name))
@@ -224,10 +227,19 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         # noinspection PyBroadException
         try:
             current.update_handler.process_update(update)
+        except:
+            logger.exception(f'Update processing for state {current.name} failed.')
+        # end try
+        try:
+            self.ALL.update_handler.process_update(update)
+        except:
+            logger.exception('Update processing for special ALL state failed.')
+        # end try
+        try:
             self.save_state_for_update(update)
         except:
-            logger.exception('Sate update processing for state {} failed.'.format(current.name))
-        # end def
+            logger.exception(f'Saving state {current.name} failed.')
+        # end try
     # end def
 
     @property

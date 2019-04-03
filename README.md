@@ -41,6 +41,10 @@ or
 ```py
 states.set(states.STATE_3_A)
 ```
+### Reserved State names
+- `DEFAULT`: Every user starts in this state.
+- `CURRENT`: This is the state a user just when the function get's executed.
+- `ALL`: Meta state, all events attached to this state will always be executed after processing the current state. 
 
 ### Additional data for a state
 You can supply data to the activate commands.
