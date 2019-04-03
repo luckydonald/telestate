@@ -56,7 +56,7 @@ class TeleMachinePonyORM(TeleMachine):
                 user_id = orm.Required(int)
                 chat_id = orm.Required(int)
                 state = orm.Required(str)
-                data = orm.Required(orm.Json)
+                data = orm.Optional(orm.Json)  # can be None
                 orm.PrimaryKey(user_id, chat_id)
             # end class
             self.StateTable = State
@@ -93,6 +93,7 @@ class TeleMachinePonyORM(TeleMachine):
         excs = []
         ul = self.UpsertLockTable.select().for_update().first()  # enforce only one is in a session.
         for i in range(5):  # limit to 5 tries
+            logger.debug(f"Searching entry for chat {chat_id} and user {user_id}.")
             entry = self.StateTable.get(
                 chat_id=chat_id,
                 user_id=user_id
@@ -106,7 +107,7 @@ class TeleMachinePonyORM(TeleMachine):
                     data=state_data,
                 )
             else:
-                logger.debug(f"Creating new entry for chat {chat_id} and user {user_id}.")
+                logger.debug(f"Creating new entry for chat {chat_id} and user {user_id} with state {state_name!r} and data:\n{state_data!r}.")
                 self.StateTable(
                     chat_id=chat_id,
                     user_id=user_id,
