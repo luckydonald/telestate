@@ -188,8 +188,6 @@ class TeleState(TBlueprint):
         # end for
     # end def
 
-
-
     def process_result(self, update, result):
         """
         Send the result.

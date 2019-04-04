@@ -87,6 +87,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         for state in self.states.values():
             cast(TeleState, state).register_teleflask(teleflask_or_tblueprint)
         # end def
+        self.ALL.register_teleflask(teleflask_or_tblueprint)
     # end def
 
     def register_state(self, name, state=None):
@@ -135,6 +136,9 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
                 raise ValueError('Cant set ALL manually.')
             # end if
             state.register_machine(self)
+            if self.is_registered:
+                state.register_teleflask(self.teleflask)
+            # end if
             object.__setattr__(self, 'ALL', state)
         elif name in self.states:
             logger.debug('adding new, but is existing.')
