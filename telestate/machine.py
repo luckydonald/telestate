@@ -129,11 +129,13 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
             state.register_machine(self)
             object.__setattr__(self, 'CURRENT', state)
         elif name == 'ALL':
+            # we don't add this to the states array.
             logger.debug('setting up ALL.')
             if self.did_init or name in self.states:
                 raise ValueError('Cant set ALL manually.')
             # end if
             state.register_machine(self)
+            object.__setattr__(self, 'ALL', state)
         elif name in self.states:
             logger.debug('adding new, but is existing.')
             if not overwrite:
@@ -168,10 +170,8 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     def __getattr__(self, name):
         logger.debug(name)
-        if can_be_name(name):
-            if name in self.states:
-                return self.states[name]
-            # end if
+        if can_be_name(name) and name in self.states:
+            return self.states[name]
         # end if
 
         # Fallback is normal operation
@@ -233,25 +233,21 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     def process_update(self, update):
         self.load_state_for_update(update)
-        current: TeleState = self.CURRENT  # to suppress race-conditions of the logging exception and possible setting of states.
+        current: TeleState = self.CURRENT  # to suppress race-conditions of the logging exception and setting of states.
         logger.debug('Got update for state {}.'.format(current.name))
-        # TODO: load state here
         # noinspection PyBroadException
         try:
             current.update_handler.process_update(update)
         except:
             logger.exception(f'Update processing for state {current.name} failed.')
         # end try
+        # noinspection PyBroadException
         try:
             self.ALL.update_handler.process_update(update)
         except:
             logger.exception('Update processing for special ALL state failed.')
         # end try
-        try:
-            self.save_state_for_update(update)
-        except:
-            logger.exception(f'Saving state {current.name} failed.')
-        # end try
+        self.save_state_for_update(update)
     # end def
 
     @property
