@@ -56,7 +56,7 @@ class TeleMachinePonyORM(TeleMachine):
                 user_id = orm.Required(int)
                 chat_id = orm.Required(int)
                 state = orm.Required(str)
-                data = orm.Optional(orm.Json)  # can be None
+                data = orm.Optional(orm.Json, nullable=True)  # can be None
                 orm.PrimaryKey(user_id, chat_id)
             # end class
             self.StateTable = State
