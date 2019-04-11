@@ -246,7 +246,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
     def process_update(self, update):
         chat_id, user_id = self.msg_get_chat_and_user(update)
         state_name, state_data = self.load_state_for_chat_user(chat_id, user_id)
-        logger.debug(
+        logger.info(
             f"Loading state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
             f"Data: {pformat(state_data)}"
         )
@@ -281,7 +281,21 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
             logger.exception('Update processing for special (always active) ALL state failed.')
         # end try
         state_name = self.CURRENT.name
-        state_data = self.serialize(state_name, self.CURRENT.data)
+        try:
+            state_data = self.serialize(state_name, self.CURRENT.data)
+        except:
+            # resets state, make sure we can still function at all.
+            logger.exception(
+                "Error in serialize, resetting state to default:\n"
+                f"Old state: {state_name}\n"
+                f"Lost data: {state_data!r}"
+            )
+            state_name, state_data = None, None
+        # end try
+        logger.info(
+            f"Storing state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
+            f"Data: {pformat(state_data)}"
+        )
         self.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
     # end def
 
