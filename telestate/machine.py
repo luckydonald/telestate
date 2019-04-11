@@ -239,6 +239,9 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
     def process_update(self, update):
         chat_id, user_id = self.msg_get_chat_and_user(update)
         state_name, state_data = self.load_state_for_chat_user(chat_id, user_id)
+        if state_name is None:
+            state_name = "DEFAULT"
+        # end if
         state_data = self.deserialize(state_name, state_data)
         self.set(state_name, data=state_data)
         assert self.CURRENT.name == state_name or (state_name is None and self.CURRENT.name == "DEFAULT")
