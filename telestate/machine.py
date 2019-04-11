@@ -258,7 +258,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         except:
             # resets state, make sure we can still function at all.
             logger.exception(
-                "Error in deserialize, resetting state to default:\n"
+                "Error in deserialize, resetting state to DEFAULT (None):\n"
                 f"Old state: {state_name}\n"
                 f"Lost data: {state_data!r}"
             )
@@ -286,7 +286,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         except:
             # resets state, make sure we can still function at all.
             logger.exception(
-                "Error in serialize, resetting state to default:\n"
+                "Error in serialize, resetting state to DEFAULT (None):\n"
                 f"Old state: {state_name}\n"
                 f"Lost data: {state_data!r}"
             )
