@@ -186,3 +186,52 @@ states_db = db.states
 
 states = TeleMachineMongo(__name__, mongodb_table=states_db)
 ```
+
+## Custom serialisation of database data
+
+If you want to use something which is not directly json-serializable (or whatever your selected database connector supports),
+you can provide custom methods to transform between database data format and the one you'll see in the state.
+
+To use it, you have to subclass the `TeleMachine` implementation and override `serialize` and `deserialize`.
+In there you can do whatever needed to produce your data representation and how to get back to a storable format.  
+
+In this example we use `TeleMachineMongo`, you can use any other [state storage provider](#state-storage-provider). 
+
+```py
+class TeleMachineMongoSerializing(TeleMachineMongo):
+    @staticmethod
+    def deserialize(db_data, state_name):
+        """
+        database format -> python format
+
+        :param db_data: The data as it comes from the database. Probably that's a python dict, if you store that.
+        :type  db_data: dict | list | int | float | bool | str
+
+        :param state_name: The name of the current state, that's `STATE.data`.
+        :type  state_name: str
+
+        :return: The object you want to interact with when using `STATE.data`.
+        :rtype: Any
+        """
+        return new SomethingClass(**db_data)
+    # end def
+
+    @staticmethod
+    def serialize(state_data, state_name):
+        """
+        python format -> database format
+
+        :param state_data: Basically `STATE.data`, which you can now convert back to something we can store in the database.
+        :type  state_data: Any
+
+        :param state_name: The name of the current state, that's `STATE.data`.
+        :type  state_name: str
+
+        :return: The native python object which can be written to the database.
+        :rtype: dict | list | int | float | bool | str
+        """
+        assert isinstance(state_data, SomethingClass) 
+        return state_data.to_dict()
+    # end def
+# end class
+```

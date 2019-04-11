@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+from typing import Union, Tuple, Optional
+
 from luckydonaldUtils.logger import logging
+from luckydonaldUtils.typing import JSONType
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
 from ..machine import TeleMachine
@@ -30,8 +33,11 @@ class TeleMachineSimpleDict(TeleMachine):
         super().__init__(name, teleflask_or_tblueprint)
     # end def
 
-    def load_state_for_update(self, update):
-        chat_id, user_id = self.msg_get_chat_and_user(update)
+    def load_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None]
+    ) -> Tuple[Optional[str], JSONType]:
         logger.debug('states: {!r}'.format(self.cache))
         cache_data = self.cache.get(chat_id, {})
         # cache_data now contains all the users for the current chat, as dict.
@@ -40,25 +46,28 @@ class TeleMachineSimpleDict(TeleMachine):
         # state_name is the state's name or None.
         logger.debug(f'cached state for {chat_id}|{user_id}: {state_name!r}\ndata: {cache_data!r}')
         if state_name:
-            self.set(state_name, data=cache_data)
+            return state_name, cache_data
         else:
             logger.debug('no state found for update.')
-            self.set(None, data=None)
+            return None, None
         # end def
     # end def
 
-    def save_state_for_update(self, update: TGUpdate):
-        chat_id, user_id = self.msg_get_chat_and_user(update)
-        state_name = self.CURRENT.name
-        data = self.CURRENT.data
-        logger.debug(f'storing state for {chat_id}|{user_id}: {state_name!r}\ndata: {data!r}')
+    def save_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None],
+        state_name: str,
+        state_data: JSONType
+    ) -> None:
+        logger.debug(f'storing state for {chat_id}|{user_id}: {state_name!r}\ndata: {state_data!r}')
 
         if chat_id not in self.cache:
             # chat_id level does not exist, create, with the {user_id: (state_name, data)} already inserted.
-            self.cache[chat_id] = {user_id: (state_name, data)}
+            self.cache[chat_id] = {user_id: (state_name, state_data)}
         else:
             # chat_id level does exist, just store the state in the user_id dict element. This can overwrite.
-            self.cache[chat_id][user_id] = (state_name, data)
+            self.cache[chat_id][user_id] = (state_name, state_data)
         # end if
         logger.debug('states: {!r}'.format(self.cache))
     # end def

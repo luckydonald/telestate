@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from typing import Type
+from typing import Type, Union, Tuple, Optional
 
 from luckydonaldUtils.logger import logging
+from luckydonaldUtils.typing import JSONType
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from pony import orm
 
@@ -72,54 +73,52 @@ class TeleMachinePonyORM(TeleMachine):
     # end def
 
     @orm.db_session
-    def load_state_for_update(self, update):
-        chat_id, user_id = self.msg_get_chat_and_user(update)
-        state = self.StateTable.get(chat_id=chat_id, user_id=user_id)
-        if not state:
+    def load_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None]
+    ) -> Tuple[Optional[str], JSONType]:
+        db_state = self.StateTable.get(chat_id=chat_id, user_id=user_id)
+        if not db_state:
             # switch into the default state
-            self.set(None, data=None)
-            return
+            return None, None
         # end if
-        self.set(state.state, data=state.data)
-        assert self.CURRENT.name == state.state
+        return db_state.state, db_state.data
     # end def
 
     @orm.db_session
-    def save_state_for_update(self, update: TGUpdate):
-        chat_id, user_id = self.msg_get_chat_and_user(update)
-        state_name = self.CURRENT.name
-        state_data = self.CURRENT.data
+    def save_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None],
+        state_name: str,
+        state_data: JSONType
+    ) -> None:
 
-        excs = []
         ul = self.UpsertLockTable.select().for_update().first()  # enforce only one is in a session.
-        for i in range(5):  # limit to 5 tries
-            logger.debug(f"Searching entry for chat {chat_id} and user {user_id}.")
-            entry = self.StateTable.get(
+        logger.debug(f"Searching entry for chat {chat_id} and user {user_id}.")
+        # noinspection PyUnresolvedReferences
+        db_state = self.StateTable.get(
+            chat_id=chat_id,
+            user_id=user_id
+        )
+        if db_state:
+            logger.debug(f"Found existing entry for chat {chat_id} and user {user_id}. Last state: {db_state.state!r}")
+            db_state.set(
                 chat_id=chat_id,
-                user_id=user_id
+                user_id=user_id,
+                state=state_name,
+                data=state_data,
             )
-            if entry:
-                logger.debug(f"Found existing entry for chat {chat_id} and user {user_id}. Last state: {entry.state!r}")
-                entry.set(
-                    chat_id=chat_id,
-                    user_id=user_id,
-                    state=state_name,
-                    data=state_data,
-                )
-            else:
-                logger.debug(f"Creating new entry for chat {chat_id} and user {user_id} with state {state_name!r} and data:\n{state_data!r}.")
-                self.StateTable(
-                    chat_id=chat_id,
-                    user_id=user_id,
-                    state=state_name,
-                    data=state_data,
-                )
-            # end if
-            break
         else:
-            # we never got successful, never hit a break.
-            assert excs, "An error should have occured, as we didn't break."
-            raise AssertionError(excs)  # throw them all out
-        # end for
+            logger.debug(f"Creating new entry for chat {chat_id} and user {user_id} with state {state_name!r} and data:\n{state_data!r}.")
+            # noinspection PyArgumentList
+            self.StateTable(
+                chat_id=chat_id,
+                user_id=user_id,
+                state=state_name,
+                data=state_data,
+            )
+        # end if
     # end def
 # end class

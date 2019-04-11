@@ -1,5 +1,7 @@
 import unittest, time
+from typing import Union, Tuple, Optional
 
+from luckydonaldUtils.typing import JSONType
 from pytgbot.api_types.receivable.media import MessageEntity
 from teleflask import Teleflask, TBlueprint
 from pytgbot.api_types.receivable.peer import Chat, User
@@ -21,16 +23,25 @@ logging.add_colored_handler(level=logging.DEBUG)
 
 class SilentTeleMachine(TeleMachine):
     """
-    Don't raise NotImplementedError for load_state_for_update(...) and save_state_for_update(...).
+    Don't raise NotImplementedError for load_state_for_chat_user(...) and save_state_for_chat_user(...).
     """
 
-    def load_state_for_update(self, update):
-        pass
-
+    def load_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None]
+    ) -> Tuple[Optional[str], JSONType]:
+        return None, None  # if mocked, tell the mock it returns tuple(None, None), too.
     # end def
 
-    def save_state_for_update(self, update):
-        pass
+    def save_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None],
+        state_name: str,
+        state_data: JSONType
+    ) -> None:
+        return None  # if mocked, tell the mock it returns None, too.
     # end def
 
 
@@ -123,14 +134,18 @@ class MyTestCase(unittest.TestCase):
     def test_updates_parent_not_implemented(self):
         update = Update(1)
         m = TeleMachine('a')
-        with self.assertRaises(NotImplementedError,
-                               msg="should require subclasses to implement load_state_for_update") as context:
-            m.load_state_for_update(update)
+        with self.assertRaises(
+            NotImplementedError,
+           msg="should require subclasses to implement load_state_for_chat_user"
+        ):
+            m.load_state_for_chat_user(0, 0)
         # end with
 
-        with self.assertRaises(NotImplementedError,
-                               msg="should require subclasses to implement save_state_for_update") as context:
-            m.save_state_for_update(update)
+        with self.assertRaises(
+            NotImplementedError,
+            msg="should require subclasses to implement save_state_for_chat_user"
+        ):
+            m.save_state_for_chat_user(0, 0, "", None)
         # end with
 
     # end def
@@ -154,19 +169,17 @@ class MyTestCase(unittest.TestCase):
         self.m.DEFAULT.on_update()(call_me(0))
         self.m.BEST_PONY.on_update()(call_me(1))
 
-        self.m.process_update(update)
-        self.assertTrue(called[0], 'DEFAULT should have been called')
-        self.assertFalse(called[1], 'BEST_PONY should not have been called')
-
-        called = [False, False]
         self.m.BEST_PONY.activate()
         self.assertEqual(self.m.CURRENT, self.s)
         self.assertEqual(self.m.CURRENT, self.m.BEST_PONY)
         self.assertEqual(self.m.CURRENT.name, 'BEST_PONY')
 
         self.m.process_update(update)
-        self.assertFalse(called[0], 'DEFAULT should not have been called')
-        self.assertTrue(called[1], 'BEST_PONY should have been called')
+        self.assertEqual(self.m.CURRENT, self.m.DEFAULT, "load_state_for_chat_user should set DEFAULT (None) state again.")
+        self.assertEqual(self.m.CURRENT.name, 'DEFAULT', "load_state_for_chat_user should set DEFAULT (None) state again.")
+        self.assertTrue(called[0], 'DEFAULT should have been called: load_state_for_chat_user set DEFAULT (None) state again.')
+        self.assertFalse(called[1], 'BEST_PONY should not have been called: load_state_for_chat_user set DEFAULT (None) state again.')
+    # end def
 
     # end def
 
@@ -177,7 +190,13 @@ class MyTestCase(unittest.TestCase):
 
         update = Update(
             1,
-            message=Message(2, date=int(time.time()), chat=Chat(3, 'supergroup', 'FAKE CHAT'), text='/start')
+            message=Message(
+                2,
+                date=int(time.time()),
+                from_peer=User(3, False, "Günter"),
+                chat=Chat(4, 'supergroup', 'FAKE CHAT'),
+                text='/start'
+            )
         )
         called = [False, False]
 
@@ -189,26 +208,21 @@ class MyTestCase(unittest.TestCase):
 
             # end def
             return call_me_inner
-
         # end def
 
         self.m.DEFAULT.command('start')(call_me(0))
         self.m.BEST_PONY.command('start')(call_me(1))
 
-        self.m.process_update(update)
-        self.assertTrue(called[0], 'DEFAULT should have been called')
-        self.assertFalse(called[1], 'BEST_PONY should not have been called')
-
-        called = [False, False]
         self.m.BEST_PONY.activate()
         self.assertEqual(self.m.CURRENT, self.s)
         self.assertEqual(self.m.CURRENT, self.m.BEST_PONY)
         self.assertEqual(self.m.CURRENT.name, 'BEST_PONY')
 
         self.m.process_update(update)
-        self.assertFalse(called[0], 'DEFAULT should not have been called')
-        self.assertTrue(called[1], 'BEST_PONY should have been called')
-
+        self.assertEqual(self.m.CURRENT, self.m.DEFAULT, "load_state_for_chat_user should set DEFAULT (None) state again.")
+        self.assertEqual(self.m.CURRENT.name, 'DEFAULT', "load_state_for_chat_user should set DEFAULT (None) state again.")
+        self.assertTrue(called[0], 'DEFAULT should have been called: load_state_for_chat_user set DEFAULT (None) state again.')
+        self.assertFalse(called[1], 'BEST_PONY should not have been called: load_state_for_chat_user set DEFAULT (None) state again.')
     # end def
 
     def test_data_setter(self):
@@ -414,8 +428,8 @@ class MyTestCase(unittest.TestCase):
 
     def test_AT_update(self):
         from unittest.mock import MagicMock
-        self.m.load_state_for_update: MagicMock = MagicMock(return_value=None)
-        self.m.save_state_for_update: MagicMock = MagicMock(return_value=None)
+        self.m.load_state_for_chat_user: MagicMock = MagicMock(return_value=(None, None))
+        self.m.save_state_for_chat_user: MagicMock = MagicMock(return_value=None)
 
         @self.m.DEFAULT.on_update('message')
         def asdf(update):
@@ -423,8 +437,8 @@ class MyTestCase(unittest.TestCase):
 
         # end def
         self.m.process_update(update1)
-        self.m.load_state_for_update.assert_called_with(update1)
-        self.m.save_state_for_update.assert_called_with(update1)
+        self.m.load_state_for_chat_user.assert_called_with(update1.message.chat.id, update1.message.from_peer.id)
+        self.m.save_state_for_chat_user.assert_called_with(update1.message.chat.id, update1.message.from_peer.id, 'DEFAULT', None)
     # end def
 # end class
 

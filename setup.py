@@ -55,7 +55,8 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        "luckydonald-utils>=0.69",  # general utils
+        "luckydonald-utils>=0.73",  # general utils
+        "pytgbot>=4.1.1",  # telefram communication
     ]
     # List additional groups of dependencies here (e.g. development dependencies).
     # You can install these using the following syntax, for example:

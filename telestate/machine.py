@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, cast, Union, Any, Callable
+from typing import Dict, cast, Union, Any, Callable, Tuple, Optional
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
+from luckydonaldUtils.typing import JSONType
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from teleflask import TBlueprint, Teleflask
 from teleflask.server.base import TeleflaskMixinBase, TeleflaskBase
@@ -26,7 +27,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
     Statemachine for telegram (flask).
     Basically a TBlueprint, which will select the current state and process only those functions.
 
-    It will load/save the state before/after processing the updates via the functions `load_state_for_update` and `save_state_for_update`.
+    It will load/save the state before/after processing the updates via the functions `load_state_for_chat_user` and `save_state_for_chat_user`.
     Those functions must be implemented via an extending subclass, so you can use different storage backends.
 
     Usage example:
@@ -87,7 +88,9 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         for state in self.states.values():
             cast(TeleState, state).register_teleflask(teleflask_or_tblueprint)
         # end def
-        self.ALL.register_teleflask(teleflask_or_tblueprint)
+        if hasattr(self, 'ALL'):
+            self.ALL.register_teleflask(teleflask_or_tblueprint)
+        # end if
     # end def
 
     def register_state(self, name, state=None):
@@ -110,8 +113,6 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
         :param state: The state we want to register. If not given, it will be created.
         :type  state: None|TeleState
-
-        :param data: Additional data to
 
         :param allow_setting_defaults: if CURRENT and DEFAULT as state name should be allowed. Default: `False`, not allowed.
         :type  allow_setting_defaults: bool
@@ -236,7 +237,11 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
     # end def
 
     def process_update(self, update):
-        self.load_state_for_update(update)
+        chat_id, user_id = self.msg_get_chat_and_user(update)
+        state_name, state_data = self.load_state_for_chat_user(chat_id, user_id)
+        state_data = self.deserialize(state_name, state_data)
+        self.set(state_name, data=state_data)
+        assert self.CURRENT.name == state_name or (state_name is None and self.CURRENT.name == "DEFAULT")
         current: TeleState = self.CURRENT  # to suppress race-conditions of the logging exception and setting of states.
         logger.debug('Got update for state {}.'.format(current.name))
         # noinspection PyBroadException
@@ -249,9 +254,11 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         try:
             self.ALL.update_handler.process_update(update)
         except:
-            logger.exception('Update processing for special ALL state failed.')
+            logger.exception('Update processing for special (always active) ALL state failed.')
         # end try
-        self.save_state_for_update(update)
+        state_name = self.CURRENT.name
+        state_data = self.serialize(state_name, self.CURRENT.data)
+        self.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
     # end def
 
     @property
@@ -374,22 +381,80 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         return None, None
     # end def
 
-    def load_state_for_update(self, update: TGUpdate):
+    def load_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None]
+    ) -> Tuple[Optional[str], JSONType]:
         """
         Loads a state, and sets it.
 
-        :param update: The update, to get information about chat and user ids.
-        :return: Nothing.
+        :param chat_id: ID of the user/group chat.
+        :param user_id: ID of the user.
+
+        :return: Tuple of the name of the state and optionally data.
         """
-        raise NotImplementedError('You must implement this in a subcclass.')
+        raise NotImplementedError('You must implement this in a subclass.')
     # end def
 
-    def save_state_for_update(self, update: TGUpdate):
+    def save_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None],
+        state_name: str,
+        state_data: JSONType
+    ) -> None:
         """
         Saves the current state.
 
-        :param update: The update, to get information about chat and user ids.
+        :param chat_id: ID of the user/group chat.
+        :param user_id: ID of the user.
+        :param state_name: the name of the current state.
+        :param state_data: the additional data for that state.
+
         :return: Nothing.
         """
-        raise NotImplementedError('You must implement this in a subcclass.')
+        raise NotImplementedError('You must implement this in a subclass.')
+    # end def
+
+    # noinspection PyMethodMayBeStatic
+    @staticmethod
+    def deserialize(state_name, db_data):
+        """
+        Subclasses can overwrite this function to further process the `data` as loaded from the database,
+        e.g. to create classes from it or something.
+
+        :param db_data: The data as it comes from the database. Probably that's a python dict, if you store that.
+        :type  db_data: dict | list | int | float | bool | str
+
+        :param state_name: The name of the current state, that's `STATE.data`.
+                           This is if you need to have different deserialization for different states.
+        :type  state_name: str
+
+        :return: The object you want to interact with when using `STATE.data`.
+        :rtype: Any
+        """
+        return db_data
+    # end def
+
+    @staticmethod
+    def serialize(state_name, state_data):
+        """
+        Subclasses can overwrite this function to further get the `STATE.data` to the format we can write it to the database.
+        E.g. convert your custom classes back to native python representations (`dict`, `list`, `int`, `float`, `str`, `str`).
+
+        The default implementation just returns it unchanged, and therefore works if you use json-serializable types,
+        or whatever your chosen database connector actually requires.
+
+        :param state_data: Basically `STATE.data`, which you can now convert back to something we can store in the database.
+        :type  state_data: Any
+
+        :param state_name: The name of the current state, that's `STATE.data`.
+                           This is if you need to have different serialization for different states.
+        :type  state_name: str
+
+        :return: The native python object which can be written to the database.
+        :rtype: dict | list | int | float | bool | str
+        """
+        return state_data
     # end def

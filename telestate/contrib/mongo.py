@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 
 from luckydonaldUtils.logger import logging
+from luckydonaldUtils.typing import JSONType
 from pymongo.collection import Collection
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
@@ -33,40 +34,49 @@ class TeleMachineMongo(TeleMachine):
         super().__init__(name, teleflask_or_tblueprint)
     # end def
 
-    def load_state_for_update(self, update):
-        chat_id, user_id = self.msg_get_chat_and_user_mongo_prepared(update)
+    def load_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None]
+    ) -> Tuple[Optional[str], JSONType]:
+        chat_id, user_id = self.msg_get_chat_and_user_mongo_prepared(chat_id, user_id)
         data = self.mongodb_table.find_one(
             filter={'chat_id': chat_id, 'user_id': user_id},
         )
         if not data:
-            self.set(None, data=None)
-            return
+            return None, None
         # end if
-        self.set(data['state'], data=data['data'])
-        assert self.CURRENT.name == data['state']
+        return data['state'], data['data']
     # end def
 
+    @staticmethod
     def msg_get_chat_and_user_mongo_prepared(
-        self, update: TGUpdate
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None]
     ) -> Tuple[Union[int, str], Union[int, str]]:
         """
         Like `msg_get_chat_and_user(update)`,
         extracts the chat_id and user_id from an update,
         but replaces `None` with the string `"null"`.
 
-        :param update: The update
+        :param chat_id: ID of the user/group chat.
+        :param user_id: ID of the user.
+
         :return: tuple of (chat_id, user_id)
         """
-        chat_id, user_id = self.msg_get_chat_and_user(update)
         chat_id = 'null' if chat_id is None else chat_id
         user_id = 'null' if user_id is None else user_id
         return chat_id, user_id
     # end def
 
-    def save_state_for_update(self, update: TGUpdate):
-        chat_id, user_id = self.msg_get_chat_and_user_mongo_prepared(update)
-        state_name = self.CURRENT.name
-        state_data = self.CURRENT.data
+    def save_state_for_chat_user(
+        self,
+        chat_id: Union[int, str, None],
+        user_id: Union[int, str, None],
+        state_name: str,
+        state_data: JSONType
+    ) -> None:
+        chat_id, user_id = self.msg_get_chat_and_user_mongo_prepared(chat_id, user_id)
         self.mongodb_table.replace_one(
             filter={'chat_id': chat_id, 'user_id': user_id},
             replacement={
