@@ -235,3 +235,6 @@ class TeleMachineMongoSerializing(TeleMachineMongo):
     # end def
 # end class
 ```
+
+Should `deserialize` raise an Exception, the state for the user will be reset.
+This is to make sure that a error there is recoverable, and the user isn't stuck in some state with invalid data. 

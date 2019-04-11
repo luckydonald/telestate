@@ -12,6 +12,13 @@ from teleflask.server.mixins import StartupMixin
 
 from .state import TeleState, assert_can_be_name, can_be_name
 
+# if available use pformat for printing the current data.
+try:
+    from pprint import pformat
+except ImportError:
+    pformat = repr
+# end if
+
 __author__ = 'luckydonald'
 __all__ = ["TeleMachine"]
 
@@ -239,10 +246,24 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
     def process_update(self, update):
         chat_id, user_id = self.msg_get_chat_and_user(update)
         state_name, state_data = self.load_state_for_chat_user(chat_id, user_id)
+        logger.debug(
+            f"Loading state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
+            f"Data: {pformat(state_data)}"
+        )
         if state_name is None:
             state_name = "DEFAULT"
         # end if
-        state_data = self.deserialize(state_name, state_data)
+        try:
+            state_data = self.deserialize(state_name, state_data)
+        except:
+            # resets state, make sure we can still function at all.
+            logger.exception(
+                "Error in deserialize, resetting state to default:\n"
+                f"Old state: {state_name}\n"
+                f"Lost data: {state_data!r}"
+            )
+            state_name, state_data = None, None
+        # end try
         self.set(state_name, data=state_data)
         assert self.CURRENT.name == state_name or (state_name is None and self.CURRENT.name == "DEFAULT")
         current: TeleState = self.CURRENT  # to suppress race-conditions of the logging exception and setting of states.
