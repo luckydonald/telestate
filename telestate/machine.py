@@ -378,6 +378,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         Gets the `chat_id` and `user_id` values from an telegram `pytgbot` `Update` instance.
 
         :param update: pytgbot.api_types.receivable.updates.Update
+
         :return: chat_id, user_id
         :rtype: tuple(int,int)
         """
