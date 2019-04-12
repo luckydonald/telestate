@@ -384,22 +384,45 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         assert_type_or_raise(update, TGUpdate, parameter_name="update")
         assert isinstance(update, TGUpdate)
 
-        if update.message and update.message.chat.id and update.message.from_peer.id:
-            return update.message.chat.id, update.message.from_peer.id
+        chat_id = None
+        user_id = None
+        if update.message:
+            if update.message.chat and update.message.chat.id:
+                chat_id = update.message.chat.id
+            # end if
+            if update.message.from_peer and update.message.from_peer.id:
+                user_id = update.message.from_peer.id
+            # end if
+            return chat_id, user_id
         # end if
-        if update.channel_post and update.channel_post.chat.id and update.channel_post.from_peer.id:
-            return update.channel_post.chat.id, update.channel_post.from_peer.id
+        if update.channel_post:
+            if update.channel_post.chat and update.channel_post.chat.id:
+                chat_id = update.channel_post.chat.id
+            # end if
+            if update.channel_post.from_peer and update.channel_post.from_peer.id:
+                user_id = update.channel_post.from_peer.id
+            # end if
+            return chat_id, user_id
         # end if
-        if update.edited_message and update.edited_message.chat.id and update.edited_message.from_peer.id:
-            return update.edited_message.chat.id, update.edited_message.from_peer.id
+        if update.edited_message:
+            if update.edited_message.chat and update.edited_message.chat.id:
+                chat_id = update.edited_message.chat.id
+            # end if
+            if update.edited_message.from_peer and update.edited_message.from_peer.id:
+                user_id = update.edited_message.from_peer.id
+            # end if
+            return chat_id, user_id
         # end if
-        if update.edited_channel_post and update.edited_channel_post.chat.id and update.edited_channel_post.from_peer.id:
-            return update.edited_channel_post.chat.id, update.edited_channel_post.from_peer.id
+        if update.edited_channel_post:
+            if update.edited_channel_post.chat and update.edited_channel_post.chat.id:
+                chat_id = update.edited_channel_post.chat.id
+            # end if
+            if update.edited_channel_post.from_peer and update.edited_channel_post.from_peer.id:
+                user_id = update.edited_channel_post.from_peer.id
+            # end if
+            return chat_id, user_id
         # end if
         if update.callback_query and update.callback_query.message:
-            chat_id = None
-            user_id = None
-
             if update.callback_query.message.chat and update.callback_query.message.chat.id:
                 chat_id = update.callback_query.message.chat.id
             # end if
