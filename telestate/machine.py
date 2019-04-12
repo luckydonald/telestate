@@ -245,15 +245,6 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     def process_update(self, update):
         chat_id, user_id = self.msg_get_chat_and_user(update)
-        if chat_id is None:
-            logger.debug("Replacing chat_id=None with chat_id=0 to provide compatibility with databases.")
-            chat_id = 0
-        # end if
-        if user_id is None:
-            logger.debug("Replacing user_id=None with user_id=0 to provide compatibility with databases.")
-            user_id = 0
-        # end if
-
         state_name, state_data = self.load_state_for_chat_user(chat_id, user_id)
         logger.info(
             f"Loading state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
