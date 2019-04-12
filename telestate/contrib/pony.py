@@ -54,8 +54,8 @@ class TeleMachinePonyORM(TeleMachine):
             self.StateTable = state_table
         else:
             class State(db.Entity, self.State):
-                user_id = orm.Required(int, nullable=True)  # can be None (e.g. channels)
-                chat_id = orm.Required(int, nullable=True)  # can be None (e.g. inline_query)
+                user_id = orm.Required(int, nullable=True, sql_default='NULL')  # can be None (e.g. channels)
+                chat_id = orm.Required(int, nullable=True, sql_default='NULL')  # can be None (e.g. inline_query)
                 state = orm.Required(str)
                 data = orm.Optional(orm.Json, nullable=True)  # can be None
                 orm.PrimaryKey(user_id, chat_id)
