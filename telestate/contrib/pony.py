@@ -54,14 +54,14 @@ class TeleMachinePonyORM(TeleMachine):
             self.StateTable = state_table
         else:
             class State(db.Entity, self.State):
-                user_id = orm.Required(int, nullable=True, sql_default='NULL')  # can be None (e.g. channels)
-                chat_id = orm.Required(int, nullable=True, sql_default='NULL')  # can be None (e.g. inline_query)
+                id = orm.PrimaryKey(int, auto=True)
+                user_id = orm.Optional(int, sql_default='NULL', default=None, index=True)  # can be None (e.g. channels)
+                chat_id = orm.Optional(int, sql_default='NULL', default=None, index=True)  # can be None (e.g. inline_query)
                 state = orm.Required(str)
-                data = orm.Optional(orm.Json, nullable=True)  # can be None
-                orm.PrimaryKey(user_id, chat_id)
+                data = orm.Required(orm.Json, sql_default='NULL', default=None, nullable=True)  # can be None
             # end class
             self.StateTable = State
-
+        # end if
         if state_upsert_lock is not None:
             self.UpsertLockTable = state_upsert_lock
         else:
