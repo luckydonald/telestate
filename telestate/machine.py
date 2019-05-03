@@ -6,6 +6,7 @@ from luckydonaldUtils.logger import logging
 from luckydonaldUtils.typing import JSONType
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from teleflask import TBlueprint, Teleflask
+from teleflask.exceptions import AbortProcessingPlease
 from teleflask.server.base import TeleflaskMixinBase, TeleflaskBase
 from teleflask.server.blueprints import TBlueprintSetupState
 from teleflask.server.mixins import StartupMixin
@@ -253,6 +254,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         if state_name is None:
             state_name = "DEFAULT"
         # end if
+        abort_e = None
         try:
             state_data = self.deserialize(state_name, state_data)
         except:
@@ -271,15 +273,21 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         # noinspection PyBroadException
         try:
             current.update_handler.process_update(update)
+        except AbortProcessingPlease as e:
+            abort_e = e
         except:
             logger.exception(f'Update processing for state {current.name} failed.')
         # end try
-        # noinspection PyBroadException
-        try:
-            self.ALL.update_handler.process_update(update)
-        except:
-            logger.exception('Update processing for special (always active) ALL state failed.')
-        # end try
+        if not abort_e:
+            # noinspection PyBroadException
+            try:
+                self.ALL.update_handler.process_update(update)
+            except AbortProcessingPlease as e:
+                abort_e = e
+            except:
+                logger.exception('Update processing for special (always active) ALL state failed.')
+            # end try
+        # end if
         state_name = self.CURRENT.name
         try:
             state_data = self.serialize(state_name, self.CURRENT.data)
@@ -297,6 +305,9 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
             f"Data: {pformat(state_data)}"
         )
         self.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
+        if abort_e:
+            raise abort_e  # re-raise so we don't process other stuff afterwards.
+        # end if
     # end def
 
     @property
