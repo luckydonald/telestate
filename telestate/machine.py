@@ -272,23 +272,33 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         logger.debug('Got update for state {}.'.format(current.name))
         # noinspection PyBroadException
         try:
-            current.update_handler.process_update(update)
-        except AbortProcessingPlease as e:
-            abort_e = e
-        except:
-            logger.exception(f'Update processing for state {current.name} failed.')
-        # end try
-        if not abort_e:
+            # noinspection PyBroadException
+            try:
+                current.update_handler.process_update(update)
+            except AbortProcessingPlease as abort_e:
+                logger.debug('Should abort (AbortProcessingPlease), via state\'s process_update(...).', exc_info=True)
+                raise abort_e
+            except:
+                logger.exception(f'Update processing for state {current.name} failed.')
+            # end try
+
+            # ok, so we can still continue, as we had no AbortProcessingPlease.
             # noinspection PyBroadException
             try:
                 self.ALL.update_handler.process_update(update)
-            except AbortProcessingPlease as e:
-                abort_e = e
+            except AbortProcessingPlease as abort_e:
+                logger.debug('Should abort (AbortProcessingPlease), via ALL\'s process_update(...).', exc_info=True)
+                raise abort_e
             except:
                 logger.exception('Update processing for special (always active) ALL state failed.')
             # end try
-        # end if
+        except AbortProcessingPlease as e:
+            abort_e = e
+        else:
+            abort_e = None
+        # end try
         state_name = self.CURRENT.name
+        # noinspection PyBroadException
         try:
             state_data = self.serialize(state_name, self.CURRENT.data)
         except:
@@ -306,6 +316,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         )
         self.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
         if abort_e:
+            logger.debug('Re-raising AbortProcessingPlease exception.')
             raise abort_e  # re-raise so we don't process other stuff afterwards.
         # end if
     # end def
