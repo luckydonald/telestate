@@ -3,13 +3,13 @@ from typing import Type, Union, Tuple, Optional
 
 from luckydonaldUtils.logger import logging
 from luckydonaldUtils.typing import JSONType
-from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from pony import orm
 
-from ..machine import TeleStateMachine
+from ..database_driver import TeleStateDatabaseDriver
 
 
 __author__ = 'luckydonald'
+__all__ = ['PonyDriver']
 
 logger = logging.getLogger(__name__)
 if __name__ == '__main__':
@@ -17,7 +17,7 @@ if __name__ == '__main__':
 # end if
 
 
-class TeleStateMachinePonyORM(TeleStateMachine):
+class PonyDriver(TeleStateDatabaseDriver):
     """
      A TeleStateMachine implementation preserving it's values in a sql instance via PonyORM.
     """
@@ -38,19 +38,17 @@ class TeleStateMachinePonyORM(TeleStateMachine):
     # end class
     StateTable: Type[State]
 
-    def __init__(self, name, db: orm.Database, teleflask_or_tblueprint=None, state_table=None, state_upsert_lock=None):
+    def __init__(self, db: orm.Database, state_table=None, state_upsert_lock=None):
         """
         A TeleStateMachine implementation preserving it's values in a sql instance via PonyORM.
-        :param name: name of the tblueprint to generate.
         :param db: The database instance to append our tables to.
-        :param teleflask_or_tblueprint:
         :param state_table: overwrite the db.State table. If None, the generate one will be accessible at `self.StateTable`.
         :param state_upsert_lock: overwrite the db.StateUpsertLock table. If None, the generate one will be accessible at `self.UpsertLockTable`.
         """
-        super().__init__(name, teleflask_or_tblueprint=teleflask_or_tblueprint)
+        super().__init__()
 
         if state_table is not None:
-            assert issubclass(state_table, self.State), "Needs to be subclass of TeleStateMachinePonyORM.State"
+            assert issubclass(state_table, self.State), "Needs to be subclass of PonyDriver.State"
             self.StateTable = state_table
         else:
             class State(db.Entity, self.State):
