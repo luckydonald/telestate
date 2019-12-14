@@ -38,8 +38,10 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     Statemachine for telegram (flask).
     Basically a TBlueprint, which will select the current state and process only those functions.
 
-    It will load/save the state before/after processing the updates via the driver's functions `driver.load_state_for_chat_user` and `driver.save_state_for_chat_user`.
-    Those functions must be implemented via an extending subclass, so you can use different storage backends.
+    It will load/save the state before/after processing the updates via the driver's functions, by calling
+    `database_driver.load_state_for_chat_user` for retrieval and `database_driver.save_state_for_chat_user` for storing.
+    Those functions must be implemented via an extending driver subclass which in term must be provided as
+    parameter `database_driver=...`, so you can use different storage backends.
 
     Usage example:
 
@@ -55,13 +57,13 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     def __init__(
         self,
         name: str,
-        driver: Union[Type[TeleStateDatabaseDriver], TeleStateDatabaseDriver],
+        database_driver: Union[Type[TeleStateDatabaseDriver], TeleStateDatabaseDriver],
         teleflask_or_tblueprint: Teleflask = None
     ):
         self.did_init = False
         self.states: Dict[str, TeleState] = {}  # NAME: telestate_instance
-        assert_type_or_raise(driver, TeleStateDatabaseDriver, parameter_name='driver')
-        self.driver = driver
+        assert_type_or_raise(database_driver, TeleStateDatabaseDriver, parameter_name='driver')
+        self.database_driver = database_driver
         super(TeleStateMachine, self).__init__()
         if teleflask_or_tblueprint:
             self.blueprint = teleflask_or_tblueprint
@@ -256,7 +258,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
 
     def process_update(self, update):
         chat_id, user_id = self.msg_get_chat_and_user(update)
-        state_name, state_data = self.driver.load_state_for_chat_user(chat_id, user_id)
+        state_name, state_data = self.database_driver.load_state_for_chat_user(chat_id, user_id)
         logger.info(
             f"Loading state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
             f"Data: {pformat(state_data)}"
@@ -324,7 +326,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
             f"Storing state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
             f"Data: {pformat(state_data)}"
         )
-        self.driver.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
+        self.database_driver.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
         if abort_e:
             logger.debug('Re-raising AbortProcessingPlease exception.')
             raise abort_e  # re-raise so we don't process other stuff afterwards.
