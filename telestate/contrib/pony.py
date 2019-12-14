@@ -6,7 +6,7 @@ from luckydonaldUtils.typing import JSONType
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 from pony import orm
 
-from ..machine import TeleMachine
+from ..machine import TeleStateMachine
 
 
 __author__ = 'luckydonald'
@@ -17,9 +17,9 @@ if __name__ == '__main__':
 # end if
 
 
-class TeleMachinePonyORM(TeleMachine):
+class TeleStateMachinePonyORM(TeleStateMachine):
     """
-     A TeleMachine implementation preserving it's values in a sql instance via PonyORM.
+     A TeleStateMachine implementation preserving it's values in a sql instance via PonyORM.
     """
 
     class State(object):
@@ -40,7 +40,7 @@ class TeleMachinePonyORM(TeleMachine):
 
     def __init__(self, name, db: orm.Database, teleflask_or_tblueprint=None, state_table=None, state_upsert_lock=None):
         """
-        A TeleMachine implementation preserving it's values in a sql instance via PonyORM.
+        A TeleStateMachine implementation preserving it's values in a sql instance via PonyORM.
         :param name: name of the tblueprint to generate.
         :param db: The database instance to append our tables to.
         :param teleflask_or_tblueprint:
@@ -50,7 +50,7 @@ class TeleMachinePonyORM(TeleMachine):
         super().__init__(name, teleflask_or_tblueprint=teleflask_or_tblueprint)
 
         if state_table is not None:
-            assert issubclass(state_table, self.State), "Needs to be subclass of TeleMachinePonyORM.State"
+            assert issubclass(state_table, self.State), "Needs to be subclass of TeleStateMachinePonyORM.State"
             self.StateTable = state_table
         else:
             class State(db.Entity, self.State):

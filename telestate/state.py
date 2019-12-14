@@ -25,7 +25,7 @@ _STATE_NAMES_REGEX = '^[A-Z][A-Z0-9_]*$'  # case sensitive
 def assert_can_be_name(name, allow_setting_defaults=False):
     """
     Raises an exception if the given string is an invalid state name.
-    Uses :py:`TeleMachine.can_be_name` to decide.
+    Uses :py:`TeleStateMachine.can_be_name` to decide.
 
     :param name: The name of the state we want.
     :type  name: str
@@ -115,10 +115,10 @@ class TeleState(TBlueprint):
     """
     Basically the TeleState works like a TBlueprint, but is only active when that TeleState is active.
     """
-    # :type machine: TeleMachine
+    # :type machine: TeleStateMachine
     warn_on_modifications = True
 
-    def __init__(self, name=None, machine: 'TeleMachine' = None):
+    def __init__(self, name=None, machine: 'TeleStateMachine' = None):
         """
         A new state.
 
@@ -129,10 +129,10 @@ class TeleState(TBlueprint):
         if name:
             assert_can_be_name(name, allow_setting_defaults=True)
         # end if
-        from .machine import TeleMachine
-        assert_type_or_raise(machine, TeleMachine, None, parameter_name='machine')
-        assert machine is None or isinstance(machine, TeleMachine)
-        self.machine: TeleMachine = None
+        from .machine import TeleStateMachine
+        assert_type_or_raise(machine, TeleStateMachine, None, parameter_name='machine')
+        assert machine is None or isinstance(machine, TeleStateMachine)
+        self.machine: TeleStateMachine = None
         self.data: Any = None
         self.update_handler: Union[None, TeleStateUpdateHandler] = None
         super(TeleState, self).__init__(name)  # writes self.name
@@ -161,12 +161,12 @@ class TeleState(TBlueprint):
         self.machine.set(self, data=data)
     # end def
 
-    def register_machine(self, machine: 'TeleMachine', name=None):
+    def register_machine(self, machine: 'TeleStateMachine', name=None):
         """
         Registers an bot to use with the internal blueprint.
 
         :param machine: Instance of the statemachine to register to.
-        :type  machine: TeleMachine:
+        :type  machine: TeleStateMachine:
         :param name: Optionally you can overwrite the name.
         :type  name: str
         """

@@ -5,16 +5,16 @@ from luckydonaldUtils.logger import logging
 from luckydonaldUtils.typing import JSONType
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
-from ..machine import TeleMachine
+from ..machine import TeleStateMachine
 
 __author__ = 'luckydonald'
-__all__ = ['TeleMachineSimpleDict']
+__all__ = ['TeleStateMachineSimpleDict']
 logger = logging.getLogger(__name__)
 
 
-class TeleMachineSimpleDict(TeleMachine):
+class TeleStateMachineSimpleDict(TeleStateMachine):
     """
-    A TeleMachine implementation preserving it's values in an in-memory python dict.
+    A TeleStateMachine implementation preserving it's values in an in-memory python dict.
 
     Stored like `cache[chat_id][user_id] = (state, data)`:
     ```py
@@ -28,7 +28,7 @@ class TeleMachineSimpleDict(TeleMachine):
     }
     """
     def __init__(self, name, teleflask_or_tblueprint=None):
-        logger.debug('creating new TeleMachineSimpleDict instance.')
+        logger.debug('creating new TeleStateMachineSimpleDict instance.')
         self.cache = dict()  # {'chat_id': {'user_id': 'state'}}
         super().__init__(name, teleflask_or_tblueprint)
     # end def

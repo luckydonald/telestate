@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from abc import ABC
 from typing import Dict, cast, Union, Any, Callable, Tuple, Optional
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
@@ -21,7 +22,7 @@ except ImportError:
 # end if
 
 __author__ = 'luckydonald'
-__all__ = ["TeleMachine"]
+__all__ = ["TeleStateMachine"]
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ if __name__ == '__main__':
 # end if
 
 
-class TeleMachine(StartupMixin, TeleflaskMixinBase):
+class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     """
     Statemachine for telegram (flask).
     Basically a TBlueprint, which will select the current state and process only those functions.
@@ -40,7 +41,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     Usage example:
 
-    >>> states = TeleMachine()  # choose a subclass like `TeleMachineSimpleDict`, see the contrib folder.
+    >>> states = TeleStateMachine()  # choose a subclass like `TeleMachineSimpleDict`, see the contrib folder.
 
     You can access the current state via `states.CURRENT`, and the default state for a new user/chat is `states.DEFAULT`.
 
@@ -52,7 +53,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
     def __init__(self, name, teleflask_or_tblueprint=None):
         self.did_init = False
         self.states: Dict[str, TeleState] = {}  # NAME: telestate_instance
-        super(TeleMachine, self).__init__()
+        super(TeleStateMachine, self).__init__()
         if teleflask_or_tblueprint:
             self.blueprint = teleflask_or_tblueprint
             if isinstance(teleflask_or_tblueprint, Teleflask):
@@ -114,7 +115,7 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
 
     def _register_state(self, name, state=None, allow_setting_defaults=False, overwrite=False):
         """
-        Registers a state to this TeleMachine.
+        Registers a state to this TeleStateMachine.
 
         :param name: The name of the state we want.
         :type  name: str
@@ -542,3 +543,14 @@ class TeleMachine(StartupMixin, TeleflaskMixinBase):
         """
         return state_data
     # end def
+
+
+class TeleMachine(TeleStateMachine, ABC):
+    """
+    Use TeleStateMachine instead!
+    """
+    def __init__(self, name, teleflask_or_tblueprint=None):
+        logger.warning("The use of TeleMachine is deprecated, please import and use TeleStateMachine instead.")
+        super().__init__(name, teleflask_or_tblueprint)
+    # end def
+# end class

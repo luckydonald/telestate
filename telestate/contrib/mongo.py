@@ -6,16 +6,16 @@ from luckydonaldUtils.typing import JSONType
 from pymongo.collection import Collection
 from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
-from ..machine import TeleMachine
+from ..machine import TeleStateMachine
 
 __author__ = 'luckydonald'
-__all__ = ['TeleMachineMongo']
+__all__ = ['TeleStateMachineMongo']
 logger = logging.getLogger(__name__)
 
 
-class TeleMachineMongo(TeleMachine):
+class TeleStateMachineMongo(TeleStateMachine):
     """
-    A TeleMachine implementation preserving it's values in a mongo db instance.
+    A TeleStateMachine implementation preserving it's values in a mongo db instance.
 
     It will store im the format of
     ```py

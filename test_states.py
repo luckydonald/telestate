@@ -6,7 +6,7 @@ from pytgbot.api_types.receivable.media import MessageEntity
 from teleflask import Teleflask, TBlueprint
 from pytgbot.api_types.receivable.peer import Chat, User
 from pytgbot.api_types.receivable.updates import Update, Message
-from telestate import TeleState, TeleMachine, state
+from telestate import TeleState, TeleStateMachine, state
 
 try:
     from test_data import update1
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 logging.add_colored_handler(level=logging.DEBUG)
 
 
-class SilentTeleMachine(TeleMachine):
+class SilentTeleStateMachine(TeleStateMachine):
     """
     Don't raise NotImplementedError for load_state_for_chat_user(...) and save_state_for_chat_user(...).
     """
@@ -69,7 +69,7 @@ class MyTestCase(unittest.TestCase):
             disable_setting_webhook_telegram=True,
             disable_setting_webhook_route=True
         )
-        self.m = SilentTeleMachine(__name__, self.b)
+        self.m = SilentTeleStateMachine(__name__, self.b)
         self.s = TeleState('LITTLEPIP')
         self.b._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
         self.b.init_bot()
@@ -133,7 +133,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_updates_parent_not_implemented(self):
         update = Update(1)
-        m = TeleMachine('a')
+        m = TeleStateMachine('a')
         with self.assertRaises(
             NotImplementedError,
            msg="should require subclasses to implement load_state_for_chat_user"
@@ -445,14 +445,14 @@ class MyTestCase(unittest.TestCase):
 
 class AnotherTestCase(unittest.TestCase):
     def test_msg_get_chat_and_user_message(self):
-        result = TeleMachine.msg_get_chat_and_user(update1)
+        result = TeleStateMachine.msg_get_chat_and_user(update1)
         self.assertEqual(result, (1234, 4458))
     # end def
 
     def test_blueprintability(self):
         # test should just not raise any errors.
         states_tbp = TBlueprint(__name__)
-        states = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp)
+        states = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp)
 
         @states.DEFAULT.command('cancel')
         def func_1(update):
@@ -461,7 +461,7 @@ class AnotherTestCase(unittest.TestCase):
 
     def test_blueprintability_and_register(self):
         states_tbp = TBlueprint(__name__)
-        states: TeleMachine = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp)
+        states: TeleStateMachine = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp)
 
         @states.DEFAULT.command('cancel')
         def func_1(update):
@@ -483,7 +483,7 @@ class AnotherTestCase(unittest.TestCase):
 
     def test_blueprintability_and_execute(self):
         states_tbp = TBlueprint(__name__)
-        states = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp)
+        states = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp)
         called = [False]
 
         @states.DEFAULT.command('cancel')
@@ -509,7 +509,7 @@ class AnotherTestCase(unittest.TestCase):
         states_tbp = TBlueprint(__name__)
         states_tbp2 = TBlueprint(__name__ + "2")
         states_tbp.register_tblueprint(states_tbp2)
-        states = SilentTeleMachine(__name__, teleflask_or_tblueprint=states_tbp2)
+        states = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp2)
         called = [False]
 
         @states.DEFAULT.command('cancel')
