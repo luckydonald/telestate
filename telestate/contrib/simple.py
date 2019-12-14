@@ -3,16 +3,15 @@ from typing import Union, Tuple, Optional
 
 from luckydonaldUtils.logger import logging
 from luckydonaldUtils.typing import JSONType
-from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
-from ..machine import TeleStateMachine
+from ..database_driver import TeleStateDatabaseDriver
 
 __author__ = 'luckydonald'
-__all__ = ['TeleStateMachineSimpleDict']
+__all__ = ['SimpleDictDriver']
 logger = logging.getLogger(__name__)
 
 
-class TeleStateMachineSimpleDict(TeleStateMachine):
+class SimpleDictDriver(TeleStateDatabaseDriver):
     """
     A TeleStateMachine implementation preserving it's values in an in-memory python dict.
 
@@ -27,10 +26,10 @@ class TeleStateMachineSimpleDict(TeleStateMachine):
         },
     }
     """
-    def __init__(self, name, teleflask_or_tblueprint=None):
-        logger.debug('creating new TeleStateMachineSimpleDict instance.')
+    def __init__(self):
+        logger.debug('creating new SimpleDictDriver instance.')
         self.cache = dict()  # {'chat_id': {'user_id': 'state'}}
-        super().__init__(name, teleflask_or_tblueprint)
+        super().__init__()
     # end def
 
     def load_state_for_chat_user(

@@ -45,7 +45,8 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
 
     Usage example:
 
-    >>> states = TeleStateMachine()  # choose a subclass like `TeleMachineSimpleDict`, see the contrib folder.
+    >>> from telestate.contrib.simple import SimpleDictDriver
+    >>> states = TeleStateMachine(__name__, driver=SimpleDictDriver())  # choose any driver like `SimpleDictDriver`, see the contrib folder.
 
     You can access the current state via `states.CURRENT`, and the default state for a new user/chat is `states.DEFAULT`.
 
