@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+import inspect
 from abc import ABC
-from typing import Dict, cast, Union, Any, Callable, Tuple, Optional
+from typing import Dict, cast, Union, Any, Callable, Tuple, Optional, Type
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
@@ -13,6 +14,7 @@ from teleflask.server.blueprints import TBlueprintSetupState
 from teleflask.server.mixins import StartupMixin
 
 from .state import TeleState, assert_can_be_name, can_be_name
+from .database_driver import TeleStateDatabaseDriver
 
 # if available use pformat for printing the current data.
 try:
@@ -36,7 +38,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     Statemachine for telegram (flask).
     Basically a TBlueprint, which will select the current state and process only those functions.
 
-    It will load/save the state before/after processing the updates via the functions `load_state_for_chat_user` and `save_state_for_chat_user`.
+    It will load/save the state before/after processing the updates via the driver's functions `driver.load_state_for_chat_user` and `driver.save_state_for_chat_user`.
     Those functions must be implemented via an extending subclass, so you can use different storage backends.
 
     Usage example:
@@ -50,9 +52,16 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     That data can be any type, which your storage backend is able to process.
     Using basic python types (`dict`, `list`, `str`, `int`, `bool` and `None`) should be safe to use with most of them.
     """
-    def __init__(self, name, teleflask_or_tblueprint=None):
+    def __init__(
+        self,
+        name: str,
+        driver: Union[Type[TeleStateDatabaseDriver], TeleStateDatabaseDriver],
+        teleflask_or_tblueprint: Teleflask = None
+    ):
         self.did_init = False
         self.states: Dict[str, TeleState] = {}  # NAME: telestate_instance
+        assert_type_or_raise(driver, TeleStateDatabaseDriver, parameter_name='driver')
+        self.driver = driver
         super(TeleStateMachine, self).__init__()
         if teleflask_or_tblueprint:
             self.blueprint = teleflask_or_tblueprint
@@ -247,7 +256,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
 
     def process_update(self, update):
         chat_id, user_id = self.msg_get_chat_and_user(update)
-        state_name, state_data = self.load_state_for_chat_user(chat_id, user_id)
+        state_name, state_data = self.driver.load_state_for_chat_user(chat_id, user_id)
         logger.info(
             f"Loading state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
             f"Data: {pformat(state_data)}"
@@ -315,7 +324,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
             f"Storing state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
             f"Data: {pformat(state_data)}"
         )
-        self.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
+        self.driver.save_state_for_chat_user(chat_id, user_id, state_name, state_data)
         if abort_e:
             logger.debug('Re-raising AbortProcessingPlease exception.')
             raise abort_e  # re-raise so we don't process other stuff afterwards.
@@ -464,42 +473,6 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         # end if
         logger.debug('Could not find fitting rule for getting user info.')
         return None, None
-    # end def
-
-    def load_state_for_chat_user(
-        self,
-        chat_id: Union[int, str, None],
-        user_id: Union[int, str, None]
-    ) -> Tuple[Optional[str], JSONType]:
-        """
-        Loads a state, and sets it.
-
-        :param chat_id: ID of the user/group chat.
-        :param user_id: ID of the user.
-
-        :return: Tuple of the name of the state and optionally data.
-        """
-        raise NotImplementedError('You must implement this in a subclass.')
-    # end def
-
-    def save_state_for_chat_user(
-        self,
-        chat_id: Union[int, str, None],
-        user_id: Union[int, str, None],
-        state_name: str,
-        state_data: JSONType
-    ) -> None:
-        """
-        Saves the current state.
-
-        :param chat_id: ID of the user/group chat.
-        :param user_id: ID of the user.
-        :param state_name: the name of the current state.
-        :param state_data: the additional data for that state.
-
-        :return: Nothing.
-        """
-        raise NotImplementedError('You must implement this in a subclass.')
     # end def
 
     # noinspection PyMethodMayBeStatic
