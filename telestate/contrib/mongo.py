@@ -4,16 +4,15 @@ from typing import Tuple, Union, Optional
 from luckydonaldUtils.logger import logging
 from luckydonaldUtils.typing import JSONType
 from pymongo.collection import Collection
-from pytgbot.api_types.receivable.updates import Update as TGUpdate
 
-from ..machine import TeleStateMachine
+from ..database_driver import TeleStateDatabaseDriver
 
 __author__ = 'luckydonald'
-__all__ = ['TeleStateMachineMongo']
+__all__ = ['MongoDriver']
 logger = logging.getLogger(__name__)
 
 
-class TeleStateMachineMongo(TeleStateMachine):
+class MongoDriver(TeleStateDatabaseDriver):
     """
     A TeleStateMachine implementation preserving it's values in a mongo db instance.
 
@@ -28,10 +27,10 @@ class TeleStateMachineMongo(TeleStateMachine):
     ```
     Note, if `user_id` or `chat_id` are `None`, that will be stored as `"null"`. See `msg_get_chat_and_user_mongo_prepared(...)`
     """
-    def __init__(self, name, mongodb_table, teleflask_or_tblueprint=None):
+    def __init__(self, mongodb_table):
         assert isinstance(mongodb_table, Collection)
         self.mongodb_table = mongodb_table
-        super().__init__(name, teleflask_or_tblueprint)
+        super().__init__()
     # end def
 
     def load_state_for_chat_user(
