@@ -108,6 +108,10 @@ class TeleStateUpdateHandler(RegisterBlueprintsMixin, BotCommandsMixin, Messages
     def process_result(self, update, result):
         return self.wrapped_state.process_result(update, result)
     # end def
+
+    def do_startup(self):
+        super().do_startup()
+    # end def
 # end class
 
 
