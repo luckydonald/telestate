@@ -2,11 +2,10 @@ import unittest, time
 from typing import Union, Tuple, Optional
 
 from luckydonaldUtils.typing import JSONType
-from pytgbot.api_types.receivable.media import MessageEntity
 from teleflask import Teleflask, TBlueprint
 from pytgbot.api_types.receivable.peer import Chat, User
 from pytgbot.api_types.receivable.updates import Update, Message
-from telestate import TeleState, TeleStateMachine, state
+from telestate import TeleState, TeleStateMachine, state, TeleStateDatabaseDriver
 
 try:
     from test_data import update1
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 logging.add_colored_handler(level=logging.DEBUG)
 
 
-class SilentTeleStateMachine(TeleStateMachine):
+class SilentDriver(TeleStateDatabaseDriver):
     """
     Don't raise NotImplementedError for load_state_for_chat_user(...) and save_state_for_chat_user(...).
     """
@@ -63,15 +62,17 @@ class BotMock(Bot):
 class MyTestCase(unittest.TestCase):
     def setUp(self):
         self.b = Teleflask(
-            'FAKE_API_KEY', app=None,
+            api_key=None,
+            app=None,
             hostname="localhost",
             debug_routes=False,
             disable_setting_webhook_telegram=True,
             disable_setting_webhook_route=True
         )
-        self.m = SilentTeleStateMachine(__name__, self.b)
-        self.s = TeleState('LITTLEPIP')
         self.b._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
+        self.d = SilentDriver()
+        self.m = TeleStateMachine(__name__, self.d, self.b)
+        self.s = TeleState('LITTLEPIP')
         self.b.init_bot()
 
     # end def
@@ -133,19 +134,19 @@ class MyTestCase(unittest.TestCase):
 
     def test_updates_parent_not_implemented(self):
         update = Update(1)
-        m = TeleStateMachine('a')
+        m = TeleStateMachine('a', database_driver=SilentDriver())
         with self.assertRaises(
             NotImplementedError,
            msg="should require subclasses to implement load_state_for_chat_user"
         ):
-            m.load_state_for_chat_user(0, 0)
+            m.database_driver.load_state_for_chat_user(0, 0)
         # end with
 
         with self.assertRaises(
             NotImplementedError,
             msg="should require subclasses to implement save_state_for_chat_user"
         ):
-            m.save_state_for_chat_user(0, 0, "", None)
+            m.database_driver.save_state_for_chat_user(0, 0, "", None)
         # end with
 
     # end def
@@ -307,14 +308,13 @@ class MyTestCase(unittest.TestCase):
 
         self.m.set(self.m.BEST_PONY)
         self.assertEqual(self.m.CURRENT, self.m.BEST_PONY)
-        self.assertEqual(self.m.BEST_PONY.data, None, "never set data for this state")
-        self.assertEqual(self.m.CURRENT.data, None, "never set data for this state")
+        self.assertEqual(self.m.BEST_PONY.data, test_data, "never set data for this state, should keep old state data")
+        self.assertEqual(self.m.CURRENT.data, test_data, "never set data for this state, should keep old state data")
 
         self.m.set(self.m.DEFAULT)
         self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
-        self.assertEqual(self.m.DEFAULT.data, None, "should have reset data with None")
-        self.assertEqual(self.m.CURRENT.data, None, "should have reset data with None")
-
+        self.assertEqual(self.m.DEFAULT.data, test_data, "should have reset data with None, should keep old state data")
+        self.assertEqual(self.m.CURRENT.data, test_data, "should have reset data with None, should keep old state data")
     # end def
 
     def test_data_statemachine_data_lost_after_switch_set_str(self):
@@ -329,13 +329,13 @@ class MyTestCase(unittest.TestCase):
 
         self.m.set("BEST_PONY")
         self.assertEqual(self.m.CURRENT, self.m.BEST_PONY)
-        self.assertEqual(self.m.BEST_PONY.data, None, "never set data for this state")
-        self.assertEqual(self.m.CURRENT.data, None, "never set data for this state")
+        self.assertEqual(self.m.BEST_PONY.data, test_data, "never set data for this state, should keep previous data")
+        self.assertEqual(self.m.CURRENT.data, test_data, "never set data for this state, should keep previous data")
 
         self.m.set("DEFAULT")
         self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
-        self.assertEqual(self.m.DEFAULT.data, None, "should have reset data with None")
-        self.assertEqual(self.m.CURRENT.data, None, "should have reset data with None")
+        self.assertEqual(self.m.DEFAULT.data, test_data, "should keep data around")
+        self.assertEqual(self.m.CURRENT.data, test_data, "should keep data around")
 
     # end def
 
@@ -372,8 +372,8 @@ class MyTestCase(unittest.TestCase):
 
         self.m.set(self.m.DEFAULT)
         self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
-        self.assertEqual(self.m.DEFAULT.data, None, "should have reset data with None")
-        self.assertEqual(self.m.CURRENT.data, None, "should have reset data with None")
+        self.assertEqual(self.m.DEFAULT.data, test_data, "should not reset data with None")
+        self.assertEqual(self.m.CURRENT.data, test_data, "should not reset data with None")
 
         self.m.set(self.m.DEFAULT, data=test_data)
         self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
@@ -393,6 +393,11 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.m.CURRENT.data, test_data)
 
         self.m.set("DEFAULT")
+        self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
+        self.assertEqual(self.m.DEFAULT.data, test_data, "should have copied over data")
+        self.assertEqual(self.m.CURRENT.data, test_data, "should have copied over data")
+
+        self.m.set("DEFAULT", data=None)
         self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
         self.assertEqual(self.m.DEFAULT.data, None, "should have reset data with None")
         self.assertEqual(self.m.CURRENT.data, None, "should have reset data with None")
@@ -414,7 +419,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(self.m.DEFAULT.data, test_data)
         self.assertEqual(self.m.CURRENT.data, test_data)
 
-        self.m.set(None)
+        self.m.set(None, None)
         self.assertEqual(self.m.CURRENT, self.m.DEFAULT)
         self.assertEqual(self.m.DEFAULT.data, None, "should have reset data with None")
         self.assertEqual(self.m.CURRENT.data, None, "should have reset data with None")
@@ -428,8 +433,8 @@ class MyTestCase(unittest.TestCase):
 
     def test_AT_update(self):
         from unittest.mock import MagicMock
-        self.m.load_state_for_chat_user: MagicMock = MagicMock(return_value=(None, None))
-        self.m.save_state_for_chat_user: MagicMock = MagicMock(return_value=None)
+        self.d.load_state_for_chat_user: MagicMock = MagicMock(return_value=(None, None))
+        self.d.save_state_for_chat_user: MagicMock = MagicMock(return_value=None)
 
         @self.m.DEFAULT.on_update('message')
         def asdf(update):
@@ -437,8 +442,8 @@ class MyTestCase(unittest.TestCase):
 
         # end def
         self.m.process_update(update1)
-        self.m.load_state_for_chat_user.assert_called_with(update1.message.chat.id, update1.message.from_peer.id)
-        self.m.save_state_for_chat_user.assert_called_with(update1.message.chat.id, update1.message.from_peer.id, 'DEFAULT', None)
+        self.d.load_state_for_chat_user.assert_called_with(update1.message.chat.id, update1.message.from_peer.id)
+        self.d.save_state_for_chat_user.assert_called_with(update1.message.chat.id, update1.message.from_peer.id, 'DEFAULT', None)
     # end def
 # end class
 
@@ -452,7 +457,9 @@ class AnotherTestCase(unittest.TestCase):
     def test_blueprintability(self):
         # test should just not raise any errors.
         states_tbp = TBlueprint(__name__)
-        states = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp)
+        states_drvr = SilentDriver()
+
+        states = TeleStateMachine(__name__, database_driver=states_drvr, teleflask_or_tblueprint=states_tbp)
 
         @states.DEFAULT.command('cancel')
         def func_1(update):
@@ -461,7 +468,8 @@ class AnotherTestCase(unittest.TestCase):
 
     def test_blueprintability_and_register(self):
         states_tbp = TBlueprint(__name__)
-        states: TeleStateMachine = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp)
+        states_drvr = SilentDriver()
+        states: TeleStateMachine = TeleStateMachine(__name__, database_driver=states_drvr, teleflask_or_tblueprint=states_tbp)
 
         @states.DEFAULT.command('cancel')
         def func_1(update):
@@ -483,7 +491,9 @@ class AnotherTestCase(unittest.TestCase):
 
     def test_blueprintability_and_execute(self):
         states_tbp = TBlueprint(__name__)
-        states = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp)
+        states_drvr = SilentDriver()
+
+        states = TeleStateMachine(__name__, database_driver=states_drvr, eleflask_or_tblueprint=states_tbp)
         called = [False]
 
         @states.DEFAULT.command('cancel')
@@ -509,7 +519,8 @@ class AnotherTestCase(unittest.TestCase):
         states_tbp = TBlueprint(__name__)
         states_tbp2 = TBlueprint(__name__ + "2")
         states_tbp.register_tblueprint(states_tbp2)
-        states = SilentTeleStateMachine(__name__, teleflask_or_tblueprint=states_tbp2)
+        states_drvr = SilentDriver()
+        states = TeleStateMachine(__name__, database_driver=states_drvr,  teleflask_or_tblueprint=states_tbp2)
         called = [False]
 
         @states.DEFAULT.command('cancel')

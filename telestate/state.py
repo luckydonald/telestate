@@ -4,6 +4,8 @@ from typing import Any, Union
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
+from luckydonaldUtils.typing import JSONType
+from pytgbot.api_types.receivable.updates import Update
 from teleflask import TBlueprint, Teleflask
 from teleflask.server.base import TeleflaskMixinBase
 from teleflask.server.mixins import RegisterBlueprintsMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin
@@ -12,6 +14,7 @@ from teleflask.server.mixins import RegisterBlueprintsMixin, BotCommandsMixin, M
 __author__ = 'luckydonald'
 __all__ = ["TeleStateUpdateHandler", "TeleState"]
 
+from telestate.constants import KEEP_PREVIOUS
 
 logger = logging.getLogger(__name__)
 if __name__ == '__main__':
@@ -138,6 +141,7 @@ class TeleState(TBlueprint):
         assert machine is None or isinstance(machine, TeleStateMachine)
         self.machine: TeleStateMachine = None
         self.data: Any = None
+        self.update: Update = None
         self.update_handler: Union[None, TeleStateUpdateHandler] = None
         super(TeleState, self).__init__(name)  # writes self.name
 
@@ -156,13 +160,16 @@ class TeleState(TBlueprint):
         self.update_handler.register_tblueprint(self)
     # end def
 
-    def activate(self, data=None):
+    def activate(self, data: Any = None, update: Union[Update, None, KEEP_PREVIOUS.__class__] = KEEP_PREVIOUS):
         """
         Sets this state as new current step.
 
         :param data: additional data to store in that state.
+        :param update: The Telegram Update this state is based on. Default is KEEP_PREVIOUS,
+                       so if you activate this state without specifying an different value for this,
+                       the update will stay the same for the new chosen state.
         """
-        self.machine.set(self, data=data)
+        self.machine.set(self, data=data, update=update)
     # end def
 
     def register_machine(self, machine: 'TeleStateMachine', name=None):
@@ -244,7 +251,11 @@ class TeleState(TBlueprint):
         return self.machine.user_id
     # end def
 
-    def set_data(self, data):
+    def set_data(self, data: Union[JSONType, Any]):
         self.data = data
+    # end def
+
+    def set_update(self, update: Union[Update, None]):
+        self.update = update
     # end def
 # end class

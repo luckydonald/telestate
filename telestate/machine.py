@@ -13,6 +13,7 @@ from teleflask.server.base import TeleflaskMixinBase, TeleflaskBase
 from teleflask.server.blueprints import TBlueprintSetupState
 from teleflask.server.mixins import StartupMixin
 
+from telestate.constants import KEEP_PREVIOUS
 from .state import TeleState, assert_can_be_name, can_be_name
 from .database_driver import TeleStateDatabaseDriver
 
@@ -224,13 +225,19 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
 
     __str__ = __repr__
 
-    def set(self, state: Union[TeleState, str, None], data: Any = None) -> TeleState:
+    def set(
+        self,
+        state: Union[TeleState, str, None],
+        data: Union[JSONType, Any, KEEP_PREVIOUS.__class__] = KEEP_PREVIOUS,
+        update: Union[TGUpdate, None, KEEP_PREVIOUS.__class__] = KEEP_PREVIOUS
+    ) -> TeleState:
         """
         Sets a state.
 
         :param state: the new state to set. Can be string or the state object itself.
                       If `None`, the DEFAULT state will be used.
-
+        :param update: the telegram update causing the state to be loaded.
+                       If `TeleStateMachine.KEEP_PREVIOUS`, if the last active state has a update attached that one will be kept around.
         :param data: additional data to keep for that state
 
         :return: The new current state, i.e. the one you just applied.
@@ -249,11 +256,29 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         elif isinstance(state, str):
             assert state in self.states, 'state not found'
             state = self.states[state]
-        else:  # state == None
+        else:  # state == None  -  because we did a type assert earlier.
             state = self.DEFAULT
         # end if
+
+        # check if we need to keep any previous update/user data.
+        if update == KEEP_PREVIOUS and self.CURRENT and self.CURRENT.update:
+            # keep the old update around if we don't specify a new one.
+            update = self.CURRENT.update
+        # end def
+        if data == KEEP_PREVIOUS and self.CURRENT:
+            # keep the old data around if we don't specify a new one.
+            data = self.CURRENT.data
+        # end def
+
+        # so we have the new or old data now in variables, release the old state's data
+        self.CURRENT.set_update(None)
+        self.CURRENT.set_data(None)
+        # now we switch the CURRENT state to be the sate we want
         self._register_state('CURRENT', state, allow_setting_defaults=True)
+        # and apply the new update/user data.
         self.CURRENT.set_data(data)
+        self.CURRENT.set_update(update)
+        # for good measure we return the choosen state as well.
         return self.CURRENT
     # end def
 
@@ -279,7 +304,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
             )
             state_name, state_data = None, None
         # end try
-        self.set(state_name, data=state_data)
+        self.set(state_name, data=state_data, update=update)
         assert self.CURRENT.name == state_name or (state_name is None and self.CURRENT.name == "DEFAULT")
         current: TeleState = self.CURRENT  # to suppress race-conditions of the logging exception and setting of states.
         logger.debug('Got update for state {}.'.format(current.name))
