@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
-from typing import Any, Union
+from typing import Any, Union, cast
 
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
@@ -175,7 +175,9 @@ class TeleState(TBlueprint):
                        so if you activate this state without specifying an different value for this,
                        the update will stay the same for the new chosen state.
         """
-        self.machine.set(self, data=data, update=update)
+        from telestate import TeleStateMachine
+        assert_type_or_raise(update, Update, None, KEEP_PREVIOUS.__class__, parameter_name='update')
+        cast(TeleStateMachine, self.machine).set(self, data=data, update=update)
     # end def
 
     def register_machine(self, machine: 'TeleStateMachine', name=None):
