@@ -56,6 +56,11 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     That data can be any type, which your storage backend is able to process.
     Using basic python types (`dict`, `list`, `str`, `int`, `bool` and `None`) should be safe to use with most of them.
     """
+    is_registered: bool
+    blueprint: Union[Teleflask, TBlueprint]
+    active_state: Union[None, TeleState]
+    did_init: bool
+
     def __init__(
         self,
         name: str,
@@ -78,6 +83,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
             self.is_registered = False
         # end def
         if isinstance(teleflask_or_tblueprint, TBlueprint):
+            # TODO: should that also be called if we got a Teleflask instance?
             from teleflask.server.blueprints import TBlueprintSetupState
             teleflask_or_tblueprint.record(self.register_bot)
             self.is_registered = teleflask_or_tblueprint._got_registered_once and teleflask_or_tblueprint._teleflask
