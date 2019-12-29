@@ -122,8 +122,13 @@ class TeleState(TBlueprint):
     """
     Basically the TeleState works like a TBlueprint, but is only active when that TeleState is active.
     """
-    # :type machine: TeleStateMachine
-    warn_on_modifications = True
+    warn_on_modifications: bool = True
+
+    update: Union[Update, None]
+    machine: Union['TeleStateMachine', None]
+    data: Union[Any, None]
+    update: Union[Update, None]
+    update_handler: Union[TeleStateUpdateHandler, None]
 
     def __init__(self, name=None, machine: 'TeleStateMachine' = None):
         """
@@ -139,10 +144,11 @@ class TeleState(TBlueprint):
         from .machine import TeleStateMachine
         assert_type_or_raise(machine, TeleStateMachine, None, parameter_name='machine')
         assert machine is None or isinstance(machine, TeleStateMachine)
-        self.machine: TeleStateMachine = None
-        self.data: Any = None
-        self.update: Update = None
-        self.update_handler: Union[None, TeleStateUpdateHandler] = None
+
+        self.machine = None  # set by self.register_machine(...), below
+        self.data = None
+        self.update = None
+        self.update_handler = None
         super(TeleState, self).__init__(name)  # writes self.name
 
         if machine:
@@ -186,6 +192,7 @@ class TeleState(TBlueprint):
         if name:
             self.name = name
         # end if
+    # end def
 
     def record(self, func):
         if self.update_handler is None:
