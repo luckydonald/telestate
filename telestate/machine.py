@@ -368,7 +368,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     @property
     def teleflask(self):
         teleflask = self.blueprint
-        while isinstance(teleflask, TBlueprint):
+        if isinstance(teleflask, TBlueprint):
             teleflask = teleflask.teleflask
         # end if
         assert isinstance(teleflask, Teleflask)

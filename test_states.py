@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 logging.add_colored_handler(level=logging.DEBUG)
 
 
+
 class SilentDriver(TeleStateDatabaseDriver):
     """
     Don't raise NotImplementedError for load_state_for_chat_user(...) and save_state_for_chat_user(...).
@@ -55,7 +56,9 @@ class BotMock(Bot):
         return User(id=0, is_bot=True, first_name="UNITTEST", username="test4458bot")
     # end def
 
-
+    def __str__(self):
+        return f"{self.__class__}(api_key={self.api_key})"
+    # end def
 # end def
 
 
@@ -134,7 +137,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_updates_parent_not_implemented(self):
         update = Update(1)
-        m = TeleStateMachine('a', database_driver=SilentDriver())
+        m = TeleStateMachine('a', database_driver=TeleStateDatabaseDriver())
         with self.assertRaises(
             NotImplementedError,
            msg="should require subclasses to implement load_state_for_chat_user"
@@ -470,6 +473,8 @@ class AnotherTestCase(unittest.TestCase):
         states_tbp = TBlueprint(__name__)
         states_drvr = SilentDriver()
         states: TeleStateMachine = TeleStateMachine(__name__, database_driver=states_drvr, teleflask_or_tblueprint=states_tbp)
+        states.teleflask._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
+        states.teleflask.init_bot()
 
         @states.DEFAULT.command('cancel')
         def func_1(update):
@@ -490,10 +495,21 @@ class AnotherTestCase(unittest.TestCase):
     # end def
 
     def test_blueprintability_and_execute(self):
-        states_tbp = TBlueprint(__name__)
-        states_drvr = SilentDriver()
+        bot = Teleflask(
+            api_key=None, app=None,
+            hostname="localhost",
+            debug_routes=False,
+            disable_setting_webhook_telegram=True,
+            disable_setting_webhook_route=True,
 
-        states = TeleStateMachine(__name__, database_driver=states_drvr, eleflask_or_tblueprint=states_tbp)
+        )
+        bot._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
+        bot.init_bot()
+        states_tbp = TBlueprint(__name__)
+        bot.register_tblueprint(states_tbp)
+        states_drvr = SilentDriver()
+        states = TeleStateMachine(__name__, database_driver=states_drvr, teleflask_or_tblueprint=states_tbp)
+
         called = [False]
 
         @states.DEFAULT.command('cancel')
@@ -521,6 +537,8 @@ class AnotherTestCase(unittest.TestCase):
         states_tbp.register_tblueprint(states_tbp2)
         states_drvr = SilentDriver()
         states = TeleStateMachine(__name__, database_driver=states_drvr,  teleflask_or_tblueprint=states_tbp2)
+        states.teleflask._bot = BotMock('FAKE_API_KEY', return_python_objects=True)
+
         called = [False]
 
         @states.DEFAULT.command('cancel')
