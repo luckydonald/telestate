@@ -250,6 +250,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         """
         logger.debug('going to set state {!r}'.format(state))
         logger.debug('got state data: {!r}'.format(data))
+        logger.debug('got update meta: {!r}'.format(update))
         assert_type_or_raise(state, str, TeleState, None, parameter_name='state')
         if isinstance(state, TeleState):
             if state.name not in self.states:
