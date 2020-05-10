@@ -192,7 +192,6 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
             else:  # name + state given
                 logger.debug('Registering state.')
                 state.register_machine(self, name)
-                # end if
             # end if
             self.states[name] = state
             if self.is_registered:
@@ -377,7 +376,6 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         # end if
         assert isinstance(teleflask, Teleflask)
         return teleflask
-
     # end def
 
     @property
