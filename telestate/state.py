@@ -124,10 +124,9 @@ class TeleState(TBlueprint):
     """
     warn_on_modifications: bool = True
 
-    update: Union[Update, None]
     machine: Union['TeleStateMachine', None]
     data: Union[Any, None]
-    update: Union[Update, None]
+    update: Union[Update, None]  # store the update activation this. Used for sending/updating menus.
     update_handler: Union[TeleStateUpdateHandler, None]
 
     def __init__(self, name=None, machine: 'TeleStateMachine' = None):
