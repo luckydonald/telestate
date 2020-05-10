@@ -56,7 +56,8 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     That data can be any type, which your storage backend is able to process.
     Using basic python types (`dict`, `list`, `str`, `int`, `bool` and `None`) should be safe to use with most of them.
     """
-    is_registered: bool
+    is_registered: bool  # if we did call self.register_teleflask()
+    listeners_registered: bool  # if we did call self.register_listeners()
     blueprint: Union[Teleflask, TBlueprint]
     active_state: Union[None, TeleState]
     did_init: bool
@@ -68,6 +69,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         teleflask_or_tblueprint: Teleflask = None
     ):
         self.did_init = False
+        self.listeners_registered = False
         self.states: Dict[str, TeleState] = {}  # NAME: telestate_instance
         assert_type_or_raise(database_driver, TeleStateDatabaseDriver, parameter_name='driver')
         self.database_driver = database_driver
@@ -75,20 +77,21 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         if teleflask_or_tblueprint:
             self.blueprint = teleflask_or_tblueprint
             if isinstance(teleflask_or_tblueprint, Teleflask):
-                self.is_registered = True
+                # calls register_bot
                 self.register_bot(teleflask_or_tblueprint)
+                # now is registered
+                self.is_registered = True
+            elif isinstance(teleflask_or_tblueprint, TBlueprint):
+                # calls register_bot
+                teleflask_or_tblueprint.record(self.register_bot)
+                # is registered as if that TBlueprint already is registered.
+                self.is_registered = teleflask_or_tblueprint._got_registered_once and teleflask_or_tblueprint._teleflask
             # end if
         else:
             self.blueprint = TBlueprint(name)
             self.is_registered = False
         # end def
-        if isinstance(teleflask_or_tblueprint, TBlueprint):
-            # TODO: should that also be called if we got a Teleflask instance?
-            from teleflask.server.blueprints import TBlueprintSetupState
-            teleflask_or_tblueprint.record(self.register_bot)
-            self.is_registered = teleflask_or_tblueprint._got_registered_once and teleflask_or_tblueprint._teleflask
-            self.blueprint.on_startup(self.do_startup)
-            self.blueprint.on_update(self.process_update)
+
         # end if
         self.active_state = None
 
@@ -113,12 +116,28 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         if isinstance(teleflask_or_tblueprint, TBlueprint):
             teleflask_or_tblueprint = teleflask_or_tblueprint.teleflask
         # end def
+        assert isinstance(teleflask_or_tblueprint, Teleflask)
         for state in self.states.values():
             cast(TeleState, state).register_teleflask(teleflask_or_tblueprint)
         # end def
         if hasattr(self, 'ALL'):
             self.ALL.register_teleflask(teleflask_or_tblueprint)
         # end if
+        self.register_listeners()  # make sure we're listening to updates.
+    # end def
+
+    def register_listeners(self):
+        """
+        Register the do_startup and process_update methods for retrieving updates.
+        :return:
+        """
+        if self.listeners_registered:
+            logger.debug('listeners already registered.')
+            return
+        # end if
+        self.listeners_registered = True
+        self.blueprint.on_startup(self.do_startup)
+        self.blueprint.on_update(self.process_update)
     # end def
 
     def register_state(self, name, state=None):
