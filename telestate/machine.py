@@ -268,9 +268,12 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         # end if
 
         # check if we need to keep any previous update/user data.
-        if update == KEEP_PREVIOUS and self.CURRENT and self.CURRENT.update:
-            # keep the old update around if we don't specify a new one.
-            update = self.CURRENT.update
+        if update == KEEP_PREVIOUS:
+            if self.CURRENT and self.CURRENT.update:
+                # keep the old update around if we don't specify a new one.
+                update = self.CURRENT.update
+            else:
+                raise ValueError('Could not KEEP_PREVIOUS update, as there is no current update set.')
         # end def
         if data == KEEP_PREVIOUS and self.CURRENT:
             # keep the old data around if we don't specify a new one.
