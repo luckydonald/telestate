@@ -6,7 +6,7 @@ from typing import Dict, cast, Union, Any, Callable, Tuple, Optional, Type
 from luckydonaldUtils.exceptions import assert_type_or_raise
 from luckydonaldUtils.logger import logging
 from luckydonaldUtils.typing import JSONType
-from pytgbot.api_types.receivable.updates import Update as TGUpdate
+from pytgbot.api_types.receivable.updates import Update as TGUpdate, Message
 from teleflask import TBlueprint, Teleflask
 from teleflask.exceptions import AbortProcessingPlease
 from teleflask.server.base import TeleflaskMixinBase, TeleflaskBase
@@ -471,63 +471,56 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
         """
         assert_type_or_raise(update, TGUpdate, parameter_name="update")
         assert isinstance(update, TGUpdate)
-
-        chat_id = None
-        user_id = None
-        if update.message:
-            if update.message.chat and update.message.chat.id:
-                chat_id = update.message.chat.id
+        chat_id, user_id = None, None
+        msg = TeleStateMachine.update_get_message(update)
+        if msg:
+            if msg.chat and msg.chat.id:
+                chat_id = msg.chat.id
             # end if
-            if update.message.from_peer and update.message.from_peer.id:
-                user_id = update.message.from_peer.id
+            if msg.from_peer and msg.from_peer.id:
+                user_id = msg.from_peer.id
             # end if
-            return chat_id, user_id
-        # end if
-        if update.channel_post:
-            if update.channel_post.chat and update.channel_post.chat.id:
-                chat_id = update.channel_post.chat.id
-            # end if
-            if update.channel_post.from_peer and update.channel_post.from_peer.id:
-                user_id = update.channel_post.from_peer.id
-            # end if
-            return chat_id, user_id
-        # end if
-        if update.edited_message:
-            if update.edited_message.chat and update.edited_message.chat.id:
-                chat_id = update.edited_message.chat.id
-            # end if
-            if update.edited_message.from_peer and update.edited_message.from_peer.id:
-                user_id = update.edited_message.from_peer.id
-            # end if
-            return chat_id, user_id
-        # end if
-        if update.edited_channel_post:
-            if update.edited_channel_post.chat and update.edited_channel_post.chat.id:
-                chat_id = update.edited_channel_post.chat.id
-            # end if
-            if update.edited_channel_post.from_peer and update.edited_channel_post.from_peer.id:
-                user_id = update.edited_channel_post.from_peer.id
-            # end if
-            return chat_id, user_id
-        # end if
-        if update.callback_query and update.callback_query.message:
-            if update.callback_query.message.chat and update.callback_query.message.chat.id:
-                chat_id = update.callback_query.message.chat.id
-            # end if
-            if update.callback_query.from_peer and update.callback_query.from_peer.id:
+            if update.callback_query and update.callback_query.from_peer and update.callback_query.from_peer.id:
                 # User who clicked the button
                 user_id = update.callback_query.from_peer.id
-            elif update.callback_query.message.from_peer and update.callback_query.message.from_peer.id:
-                # User who send the message with the keyboard (should be the bot)
-                user_id = update.callback_query.message.from_peer.id
             # end if
             return chat_id, user_id
-        # end if
         if update.inline_query and update.inline_query.from_peer and update.inline_query.from_peer.id:
             return None, update.inline_query.from_peer.id
         # end if
         logger.debug('Could not find fitting rule for getting user info.')
         return None, None
+    # end def
+
+    @staticmethod
+    def update_get_message(update) -> Union[Message, None]:
+        """
+        Gets any message value we can find from an telegram `pytgbot` `Update` instance.
+
+        :param update: pytgbot.api_types.receivable.updates.Update
+
+        :return: chat_id, user_id
+        :rtype: tuple(int,int)
+        """
+        assert_type_or_raise(update, TGUpdate, parameter_name="update")
+        assert isinstance(update, TGUpdate)
+
+        if update.message:
+            return update.message
+        # end if
+        if update.channel_post:
+            return update.channel_post
+        # end if
+        if update.edited_message:
+            return update.edited_message
+        # end if
+        if update.edited_channel_post:
+            return update.edited_channel_post
+        # end if
+        if update.callback_query and update.callback_query.message:
+            return update.callback_query.message
+        # end if
+        return None
     # end def
 
     # noinspection PyMethodMayBeStatic
