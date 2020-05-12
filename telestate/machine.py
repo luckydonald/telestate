@@ -311,7 +311,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     # end def
 
     def process_update(self, update):
-        chat_id, user_id = self.msg_get_chat_and_user(update)
+        chat_id, user_id = self.update_get_chat_and_user(update)
         state_name, state_data = self.database_driver.load_state_for_chat_user(chat_id, user_id)
         logger.info(
             f"Loading state {state_name!r} for user {user_id!r} in chat {chat_id!r}.\n"
@@ -460,7 +460,7 @@ class TeleStateMachine(StartupMixin, TeleflaskMixinBase):
     # end def
 
     @staticmethod
-    def msg_get_chat_and_user(update):
+    def update_get_chat_and_user(update):
         """
         Gets the `chat_id` and `user_id` values from an telegram `pytgbot` `Update` instance.
 

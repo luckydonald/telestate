@@ -54,7 +54,7 @@ class MongoDriver(TeleStateDatabaseDriver):
         user_id: Union[int, str, None]
     ) -> Tuple[Union[int, str], Union[int, str]]:
         """
-        Like `msg_get_chat_and_user(update)`,
+        Like `update_get_chat_and_user(update)`,
         extracts the chat_id and user_id from an update,
         but replaces `None` with the string `"null"`.
 

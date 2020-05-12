@@ -453,7 +453,7 @@ class MyTestCase(unittest.TestCase):
 
 class AnotherTestCase(unittest.TestCase):
     def test_msg_get_chat_and_user_message(self):
-        result = TeleStateMachine.msg_get_chat_and_user(update1)
+        result = TeleStateMachine.update_get_chat_and_user(update1)
         self.assertEqual(result, (1234, 4458))
     # end def
 
