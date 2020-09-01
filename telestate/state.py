@@ -77,6 +77,11 @@ def can_be_name(name: str, allow_defaults: bool = False) -> bool:
 
 
 class TeleStateUpdateHandler(RegisterBlueprintsMixin, BotCommandsMixin, MessagesMixin, UpdatesMixin, TeleflaskMixinBase):
+    """
+    This class does the actual @command, @on_update, etc. logic, by extending the mixins providing that functionality.
+
+    TeleStateMachine.process_update will call the current state's TeleStateUpdateHandler's process_update, which will leave that to the mixins.
+    """
     def __init__(self, wrapped_state, teleflask, *args, **kwargs):
         self.wrapped_state: TeleState = wrapped_state
         self.teleflask: Teleflask = teleflask
@@ -144,10 +149,10 @@ class TeleState(TBlueprint):
         assert_type_or_raise(machine, TeleStateMachine, None, parameter_name='machine')
         assert machine is None or isinstance(machine, TeleStateMachine)
 
-        self.machine = None  # set by self.register_machine(...), below
+        self.machine: Union[TeleStateMachine, None] = None  # set by self.register_machine(...), below
         self.data = None
         self.update = None
-        self.update_handler = None
+        self.update_handler: Union[TeleStateUpdateHandler, None] = None
         super(TeleState, self).__init__(name)  # writes self.name
 
         if machine:
